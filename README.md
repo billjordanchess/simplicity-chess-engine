@@ -5,7 +5,9 @@ It includes features such as:
 extensive use of both tables and bitboards
 
 minimax alpha-beta search
+
 pvs search
+
 null move search
 
 check evasion generation
