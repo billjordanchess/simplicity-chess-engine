@@ -509,19 +509,13 @@ void AddQueenHash(const int s, const int value)
 {
 	hashpawns[currentpawnkey].defence[s][0] = value;
 }
-/*
-void AddCentreHash()
-{
-  hashpawns[currentpawnkey].defence[0][2] = 0;
-}
-*/
 
 BITBOARD GetHashPawnAttacks(const int s)
 {
 	return hashpawns[currentpawnkey].pa[s];
 }
 
-void AddPawnAttackHash(const int s, const int value)
+void AddPawnAttackHash(const int s, const BITBOARD value)
 {
 	hashpawns[currentpawnkey].pa[s] = value;
 }

@@ -1050,13 +1050,6 @@ void SetRowCol()
                 if (row[x] > row[y])
                     SetBit(mask_path[1][x], y);
             }
-            /*
-            if (abs(col[x] - col[y]) <= 7 - row[x])
-                SetBit(mask_square[0][x], y);
-            if (abs(col[x] - col[y]) <= row[x])
-                SetBit(mask_square[1][x], y);
-            */
-
         }
     }
     for (x = 0; x < 64; x++)
@@ -1411,11 +1404,6 @@ void RookMoves(const int x)
 
 void BishopMoves(const int x)
 {
-	if(x<0)
-	{
-		z();
-		return;
-	}
     int nc = 0;
     int sq = bishoplist[x][nc].sq;
     do

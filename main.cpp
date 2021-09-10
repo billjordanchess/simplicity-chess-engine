@@ -14,6 +14,9 @@ void ShowHelp();
 void SetUp();
 void xboard();
 
+void ConvertFen(char* file);//
+void SaveAsc(int side);//
+
 int board_color[64] =
 {
 	1, 0, 1, 0, 1, 0, 1, 0,
@@ -30,6 +33,7 @@ int LoadDiagram(char* file, int);
 void CloseDiagram();
 
 FILE* diagram_file;
+FILE* output_file;
 char fen_name[256];
 
 int flip = 0;
@@ -53,7 +57,7 @@ extern int hash_start, hash_dest;
 
 int main()
 {
-	printf("Simplicity Chess Engine\n");
+	printf("Simplicity Chess Engine no null\n");
 	printf("Version 1.0, 6/9/21\n");
 	printf("Bill Jordan 2021\n");
 	printf("FIDE Master and 2021 state champion.\n");
@@ -83,6 +87,9 @@ int main()
 	SetBits();
 	NewPosition();
 	SetUp();
+
+	//ConvertFen("c:\\diagrams\\pos.txt");
+
 	check = Attack(xside, pieces[side][5][0]);
 	gen(check);
 	computer_side = EMPTY;
@@ -856,8 +863,6 @@ int LoadDiagram(char* file, int num)
 
 	CloseDiagram();
 	print_board();
-	int check = Attack(xside, pieces[side][5][0]);
-	gen(check);
 	printf(" diagram # %d \n", num + count);
 	count++;
 	if (side == 0)
@@ -983,4 +988,212 @@ char* MoveString(int start, int dest, int promote)
 			col[dest] + 'a',
 			row[dest] + 1);
 	return str;
+}
+
+void ConvertFen(char* file)
+{
+	nodes = 1;//
+
+	printf("convert");
+	diagram_file = fopen(file, "r");
+	if (!diagram_file)
+	{
+		printf("Diagram missing.\n");
+		return;
+	}
+	//SaveTactics("c:\\diagrams\\output.txt", ts);
+	//
+	char a[256000] = "";
+	char line[256];
+	char text[500][256];
+	int c = 0;
+
+	if (diagram_file == NULL) perror("Error opening file");
+	else {
+		while (fgets(line, 256, diagram_file) != NULL)
+		{
+			strcat(a, line);
+			strcpy(text[c], line);
+			c++;
+		}
+		fclose(diagram_file);
+	}
+
+	output_file = fopen("c:\\diagrams\\output.txt", "w");
+	for (int x = 1; x <= c; x++)
+	{
+		LoadDiagram(file, x);
+		printf(" x %d ", x);
+		SaveAsc(0);
+		fwrite(text[x-1], sizeof(char), sizeof(text[x-1]), output_file);
+		fwrite("\n", 1, 1, output_file);
+	}
+	if (output_file)
+		fclose(output_file);
+	output_file = NULL;
+	printf("done");
+	z();
+	return;
+	
+	char p[2], n1[2], f[2], r[2];
+	p[1] = 0;
+	n1[1] = 0;
+	f[1] = 0;
+	r[1] = 0;
+
+	char b[64000] = "";
+
+	int kings = 0;
+	int count;
+	int flag = 0;
+
+	for (int x = 0; x < strlen(a); x++)
+	{
+		flag = 0;
+		if (a[x] == '[' && a[x + 1] != ']')
+		{
+			flag = 1;
+			kings = 0;
+			count = 0;
+			x++;
+			//strcat(b,"kg1,");//3/6/18 missing kings
+
+			while (a[x] != ']')
+			{
+				if (a[x] == ',')//
+				{
+					x++;
+					strcat(b, "/b");
+					count = 0;
+				}
+				if (a[x + 1] == ']' || a[x + 2] == ']')
+					break;
+				p[0] = a[x] - 32;
+				f[0] = a[x + 1];
+				r[0] = a[x + 2];
+				p[1] = 0;
+				f[1] = 0;
+				r[1] = 0;
+				if (count > 0)
+					strcat(b, ",");
+				if (p[0] == 75)
+				{
+					kings++;
+					if (kings > 1)
+						strcat(b, "/b");
+				}
+				strcat(b, p);
+				strcat(b, f);
+				strcat(b, r);
+				x += 3;
+				count++;
+			}
+		}
+		//5/6/18 if(flag==1)
+		{
+			while (a[x] != 10 && a[x] != 13)
+			{
+				p[0] = a[x];
+				p[1] = 0;
+				strcat(b, p);
+				x++;
+			}
+			strcat(b, "\n");
+		}
+	}
+	printf("%s", a);
+	printf(" b %s", b);
+
+	if (diagram_file)
+		fclose(diagram_file);
+	diagram_file = NULL;
+	diagram_file = fopen("c:\\diagrams\\output.txt", "w");
+	fwrite(b, sizeof(char), sizeof(b), diagram_file);
+	if (diagram_file)
+		fclose(diagram_file);
+	diagram_file = NULL;
+	printf("done");
+	z();
+}
+
+void SaveAsc(int side)
+{
+	BITBOARD bb = 0;
+	int sq;
+
+	char a, b;
+	char a2[2], b2[2];
+
+	int c1;
+
+	char position[256] = "$";
+
+	if (side == 1)
+		strcat(position, "w");
+
+	for (int x = 0; x < 2; x++)
+	{
+		for (int y = 5; y >= 0; y--)
+		{
+			bb = bit_pieces[x][y];
+			while (bb)
+			{
+				sq = NextBit(bb);
+				if (x == 1 && y == 5)
+					strcat(position, "/b");
+				if (x == 0)
+					switch (y)
+					{
+					case 0: strcat(position, "P"); break;
+					case 1: strcat(position, "N"); break;
+					case 2: strcat(position, "B"); break;
+					case 3: strcat(position, "R"); break;
+					case 4: strcat(position, "Q"); break;
+					case 5: strcat(position, "K"); break;
+					default:break;
+					}
+				else
+				{
+					switch (y)
+					{
+					case 0: strcat(position, "p"); break;
+					case 1: strcat(position, "n"); break;
+					case 2: strcat(position, "b"); break;
+					case 3: strcat(position, "r"); break;
+					case 4: strcat(position, "q"); break;
+					case 5: strcat(position, "k"); break;
+					default:break;
+					}
+				}
+				a = col[sq] + 'a';
+				b = row[sq] + 1;
+				c1 = col[sq];
+				a2[0] = a;
+				a2[1] = 0;
+				b2[0] = b + 48;
+				b2[1] = 0;
+				strcat(position, a2);
+				strcat(position, b2);
+				strcat(position, ",");
+				bb = bb & ~mask[sq];
+			}
+		}
+	}
+	int last = strlen(position);
+	if (last > 1)
+	{
+		position[last - 1] = ']';
+		strcat(position, "\n");
+	}
+	
+	//puzzles++;
+	//printf(" %d \n",puzzles);
+	//printf(" %s \n",position);
+
+	//if (puzzles < 1000)
+	{
+		fwrite(position, sizeof(char), sizeof(position), output_file);
+		fwrite("\n",1,1, output_file);
+	}
+
 }

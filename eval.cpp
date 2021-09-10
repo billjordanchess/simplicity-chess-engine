@@ -120,7 +120,7 @@ int eval(const int alpha, const int beta)
 	BITBOARD bp = GetHashbp0();
 	BITBOARD bp1 = GetHashbp1();
 
-	int x, sq, s;
+	int x, sq;
 	for (x = 0; x < total[0][3]; x++)
 	{
 		sq = pieces[0][3][x];

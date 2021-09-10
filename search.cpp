@@ -9,8 +9,6 @@ void UnMakeRecapture();
 int CaptureSearch(int alpha, int beta, int depth);
 int RecaptureSearch(int alpha, int beta, int depth);
 
-int Forced();
-
 #define NO_PV 0
 #define PV 1
 #define CUT 2
@@ -185,7 +183,7 @@ void think()
 	ClearKillers();
 	
 	x = eval(-10000, 10000);
-	int alpha, beta;
+	//int alpha, beta;
 	int rs = side;
 	int rx = xside;
 
@@ -305,13 +303,16 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 	}
 	
 	currentdepth = depth;
+	int t,t1,t2;//
 
-	if ( ( depth > 2)
-    &&   ( null )
-    &&   (!pvs)
-    &&   ( ev1 > beta )
-    &&   ( piece_mat[side] > 1200 )
-    &&   ( !check )  )
+	if ( depth > 2
+    &&   null 
+    &&   !pvs
+    &&   ev1 > beta 
+    &&   piece_mat[side] > 500 
+    &&   !check
+	&&   max_time > 100)
+	//&&	GetThreatMove(xside, side, t1, t2, alpha) < 150)
     {
         int oldep = epflag;
 		int oldside = side;
@@ -321,6 +322,7 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 		xside ^= 1;
 		ply++; hply++;
 		epflag = 0;
+		//t = GetThreatMove(xside, side, t1, t2, alpha);
 
         x = -search( -beta, -beta+1,  depth - null_depth[depth] - 1, NO_PV, NO_NULL);
 	
@@ -330,8 +332,12 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 		ply--; hply--;
 		epflag = oldep;
 		checkup();
-        if (x >= beta) return beta;
+		if (x >= beta)
+		{
+			return beta;
+		}
 		if (x >= 9900) return x;
+		//if (piece_mat[xside] < piece_mat[side] - 100 && extend[ply] < 0)
     }
 	
 	int count = 0;
@@ -365,12 +371,14 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 	history[k22][k23] = COUNTER_SCORE;
 	
 	gen(check);
+
 	int first = first_move[ply];
+	last = first_move[ply + 1];
 	bestmove = move_list[first];
 	if (lookup > -1)
 	{
-		if(SetHashMove()==0)
-		{	
+		if (SetHashMove() == 0)
+		{
 			lookup = -1;
 		}
 	}
@@ -378,6 +386,26 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 	history[k0][k1] = h2;
 	history[k20][k21] = h3;
 	history[k22][k23] = h4;
+
+	int dis = Disco(side, pieces[xside][5][0]);
+	if (dis==77)
+	{
+		for (int i = first; i < last; ++i)
+		{
+			if (move_list[i].from == dis)
+			{
+				//do
+				{
+					//move_list[i].flags |= CHECK;
+					//move_list[i].score = check_history[b[move_list[i].from]][move_list[i].to];
+					//move_list[i].score += CAPTURE_SCORE;
+					//i++;
+				}
+				//while (move_list[i].from == dis);
+				//break;
+			}
+		}
+	}
 
 	if (ply == 0)
 	{
@@ -399,8 +427,6 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 
 	int r = 0;
 	
-	last = first_move[ply + 1];
-	
 	if (check > 0)
 	{
 		game_list[hply].flags |= INCHECK;
@@ -408,19 +434,33 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 		{
 			top = Sort(i, top, last);
 
-			if (!MakeMove(move_list[i].from, move_list[i].to, move_list[i].flags))
-			{
-				continue;
-			}
-
-			f = true;
-
 			from = move_list[i].from;
 			to = move_list[i].to;
 			flags = move_list[i].flags;
+			//*
+			if (depth <= 1 && move_list[i].score < HASH_SCORE && f)
+			{
+				ev = ev1 + PieceScore[xside][b[to]][to] - PieceScore[xside][b[to]][from];
+
+				if (flags & CAPTURE)
+					ev += piece_value[b[to]] + PieceScore[side][b[to]][to];
+				if (ev + frontier[b[to]] <= alpha)
+				{
+					//Alg(from, to);
+					//z();
+					continue;
+				}
+			}
+			//*/
+			if (!MakeMove(move_list[i].from, move_list[i].to, move_list[i].flags))
+			{
+				continue; 
+			}
+
+			f = true;		
 
 			if (move_list[i].score < HASH_SCORE)
-			{
+			{/*
 				if (depth <= 1)
 				{
 					ev = ev1 + PieceScore[xside][b[to]][to] - PieceScore[xside][b[to]][from];
@@ -433,6 +473,7 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 						continue;
 					}
 				}
+				*/
 				if (depth == 2 && ply > 1)
 				{
 					ev = ev1 + PieceScore[xside][b[to]][to] - PieceScore[xside][b[to]][from];
@@ -444,9 +485,8 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 						continue;
 					}
 				}
-
 				//blunder
-				if (move_list[i].score > -50 && b[to] != 5 && game_list[hply - 1].capture == 6 && i < last - 1)
+				if (move_list[i].score > -50 && b[to] != 5 && !(flags & CAPTURE) && i < last - 1)
 				{
 					if (BestCaptureSquare(side, xside, to, b[to]) > 0)
 					{
@@ -544,10 +584,9 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 		threat = GetThreatMove(xside, side, threat_start, threat_dest, alpha);
 		if (threat > 100)
 		{
-			MoveAttacked(threat_dest, threat_start, ply);
+			MoveAttacked(xside,threat_dest, threat_start, ply);
 		}
 	}
-	int cc;
 	for (int i = first; i < last; i++)
 	{
 		top = Sort(i, top, last);
@@ -561,9 +600,11 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 			continue;
 		}
 
-		if (!(flags & CHECK) && CheckAttack(xside, pieces[side][5][0]))
+		if (!(flags & PROMOTE) && !(flags & CAPTURE) && !(flags & CHECK) && CheckAttack(xside, pieces[side][5][0]))
 		{
 			flags |= CHECK;
+			//Alg(from, to);
+			//z();
 		}
 
 		f = true;
@@ -579,6 +620,8 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 			if (ply > 1 && extend[ply - 1] < 0 && r>0)
 			{
 				r += abs(extend[ply - 1]);
+				if (ply > 2 && extend[ply - 2] < 0)//25/8/21
+					r += abs(extend[ply - 2]);
 			}
 			if (r == 1 && depth > 4 && currentmax / 2 < depth && count > (last - first) / 2)
 			{
@@ -633,7 +676,7 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 			((move_list[i].score > -50 && !(flags & CAPTURE)) ||
 				(move_list[i].score > KILLER_SCORE) && (flags & CAPTURE)))
 		{
-			if (threat > 0 && !(flags & CHECK) && from != threat_dest)
+			if (threat > 0 && !(flags & CHECK) && from != threat_dest && b[threat_dest]<6)
 			{
 				move_list[i].score = BlunderThreat(threat, threat_start, threat_dest, piece_value[game_list[hply - 1].capture], to, flags);
 			}
@@ -641,6 +684,15 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 			{
 				move_list[i].score = Blunder(piece_value[game_list[hply - 1].capture], to, flags);
 			}
+			/*
+			if (move_list[i].score < -50 && flags & CAPTURE)//
+			{
+				move_list[i].score = -1;
+				//i--;
+				takeback();
+				continue;
+			}
+			//*/
 			if (move_list[i].score < -50)
 			{
 				i--;
@@ -933,7 +985,7 @@ int quiesce(int alpha, int beta, int depth)
 				}
 				alpha = x;
 			}
-			if (x > root_score && currentmax > 6 && PlyMove[1] > 1)// && ply % 2 == 0)
+			if (x > root_score && currentmax > 6 && PlyMove[1] > 1)
 			{
 				break;
 			}
