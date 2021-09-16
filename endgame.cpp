@@ -170,7 +170,7 @@ int EvalEndgame()
 		score[0] -= pawn_difference[pieces[0][5][0]][pawn];
 		score[1] -= pawn_difference[pieces[0][5][0]][pawn];
 	}
-	if (pawn_mat[0] == 100) //.65
+	if (pawn_mat[0] == 100) 
 	{
 		int pawn = pawnplus[0][NextBit(bit_pieces[1][0])];
 
@@ -182,18 +182,16 @@ int EvalEndgame()
 		(piece_mat[1] < 600 || piece_mat[1] == 900)
 		&& DrawnEnding(0, 1) && ply>1)
 	{
-		//z();
 		drawn = 1;
-		return 0;//21/3/13
+		return 0;
 	}
 	else
 		if (pawn_mat[1] == 0 && piece_mat[1] < 600 && pawn_mat[0] == 100 &&
 			(piece_mat[0] < 600 || piece_mat[0] == 900)
 			&& DrawnEnding(1, 0) && ply>1)
 		{
-			//z();
 			drawn = 1;
-			return 0;//21/3/13
+			return 0;
 		}
 
 	int x, sq;
@@ -313,7 +311,7 @@ int DrawnEnding(const int s, const int xs)
 			if ((bit_bishopmoves[pawnplus[s][pawn]] & bit_pieces[xs][2] || mask[pawnplus[s][pawn]] & bit_units[xs]) &&
 				!(bit_kingmoves[king] & bit_pieces[xs][2]))
 			{
-				return 1;//.69
+				return 1;
 			}
 
 			return 0;
@@ -365,7 +363,7 @@ int DrawnEnding(const int s, const int xs)
 			!(bit_kingmoves[pieces[s][5][0]] & bit_pieces[xs][3]) &&
 			!(bit_kingmoves[pieces[xs][5][0]] & bit_pieces[s][3]) &&
 			rank[xs][pawn] < 5 && mask_rows[row[pawnplus[xs][pawn]]] & bit_pieces[s][3])
-			return 1; //to test
+			return 1; 
 		return 0;
 	}
 
@@ -399,8 +397,8 @@ int PassedPawnScore(const int s, const int xs)
 		{
 			if (Attack(xs, pawnplus[s][x]) == 0 && LineAttack(xs, x) == 0 && !(mask_ranks[xs][6] & bit_pieces[xs][0]) &&
 				b[pawnplus[s][x]] == 6)//add r+q behind + pinned
-				return 800;
-			if (bit_pawncaptures[xs][x] & passed_list[s])//132810
+				return 800 - ply;
+			if (bit_pawncaptures[xs][x] & passed_list[s])
 			{
 				if (piece_mat[xs] == 500 && difference[pieces[xs][5][0]][x] > 2)
 					 score += 140;
@@ -437,7 +435,7 @@ int PassedPawnScore2(const int s, const int xs)
 			score += SquarePawn(s, xs, x);
 			if (rank[s][x] == 6 && Attack(s, pawnplus[s][x]))
 			{   
-				score += 800;
+				score += 800 - ply;
 			}
 		}
 		return score;
@@ -447,7 +445,6 @@ int PassedPawnScore2(const int s, const int xs)
 	{
 		x = NextBit(b1);
 		b1 &= not_mask[x];
-		//outside kingsquare, even with pieces
 		score += passed[s][x] >> 1;
 		if (total[xs][1] == 1)
 		{
@@ -485,7 +482,7 @@ int PassedPawnScore2(const int s, const int xs)
 						int bish = pieces[xs][2][0];
 						if (colors[x] == colors[bish])
 						{
-							score += 800;
+							score += 800 - ply;
 						}
 						continue;
 					}
@@ -493,7 +490,7 @@ int PassedPawnScore2(const int s, const int xs)
 					{
 						if (colors[x] == colors[pieces[xs][1][0]])
 						{
-							score += 800;
+							score += 800 - ply;
 						}
 						continue;
 					}
@@ -529,7 +526,7 @@ int PawnEndingScore(const int s, const int xs)
 		x = NextBit(b1);
 		b1 &= not_mask[x];
 
-		if (!(mask_squarepawn[s][x] & bit_pieces[xs][5]))//side switched 14/8/13
+		if (!(mask_squarepawn[s][x] & bit_pieces[xs][5]))
 		{
 			score += SquarePawn(s, xs, x);
 		}
@@ -567,11 +564,10 @@ int PawnEndingScore(const int s, const int xs)
 				if (rank[s][pieces[s][5][0]] > 5 && difference[pieces[s][5][0]][x] == 1)
 				{
 					score += SquarePawn(s, xs, x);
-					//z();
 				}
 			}
 		}
-		//supported passed .69
+		//supported passed pawn
 		if (rank[s][x] > 2)
 		{
 			if (bit_left[xs][x] & bit_pieces[s][0])
@@ -599,18 +595,17 @@ int PawnEndingScore(const int s, const int xs)
 		if (col[x] == 0 || (col[x] == 1 && (mask_files[0] & bit_pieces[xs][0]) == 0) &&
 			(bit_pieces[s][0] & mask_def))
 		{
-			score += 20;    //1.58
+			score += 20;   
 		}
 		if (col[x] == 7 || (col[x] == 6 && (mask_files[7] & bit_pieces[xs][0]) == 0) &&
 			(bit_pieces[s][0] & mask_abc))
 		{
-			score += 20;    //1.58
+			score += 20;    
 		}
 	}
 	//King attack pawn
 	if (bit_kingmoves[pieces[side][5][0]] & bit_pieces[xs][0] & ~(bit_pawnattacks[xs]))
-		score += 20;//27/2/20
-	//
+		score += 20;
 	return score;
 }
 

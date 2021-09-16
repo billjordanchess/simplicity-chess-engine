@@ -47,7 +47,6 @@ void UpdatePiece(const int s, const int p, const int start, const int dest)
 			break;
 		}
 	}
-
 }
 
 void RemovePiece(const int s, const int p, const int sq)
@@ -108,7 +107,7 @@ bool MakeMove(const int from, const int to, const int flags)
 	{
 		if (!(flags & CASTLE))
 		{
-		//	z();
+			//printf("1");
 		}
 		UpdatePiece(side, ROOK, castle_start[to], castle_dest[to]);
 		KingScore[side][squares[side][E1]] = -40;
@@ -116,10 +115,6 @@ bool MakeMove(const int from, const int to, const int flags)
 		{
 			AfterCastle();
 		}
-	}
-	else if ((flags & CASTLE))
-	{
-	//	z();
 	}
 
 	game_list[hply].flags = flags;
@@ -183,13 +178,13 @@ bool MakeMove(const int from, const int to, const int flags)
 
 	if (Attack(side, pieces[xside][5][0]))
 	{
-		takeback();
+		UnMakeMove();
 		return false;
 	}
 	return true;
 }
 
-void takeback()
+void UnMakeMove()
 {
 	side ^= 1;
 	xside ^= 1;
@@ -363,11 +358,11 @@ void BeforeCastle()
 
 void AfterCastle()
 {
-KingScore[side][squares[side][F1]] = -20;
-KingScore[side][squares[side][F2]] = -25;
-KingScore[side][squares[side][G1]] = 20;
-PieceScore[side][0][squares[side][E2]] = 0;
-PieceScore[side][2][squares[side][G2]] = 8;
-PieceScore[side][2][squares[side][F1]] = -10;
-PieceScore[side][1][squares[side][G1]] = -16;
+	KingScore[side][squares[side][F1]] = -20;
+	KingScore[side][squares[side][F2]] = -25;
+	KingScore[side][squares[side][G1]] = 20;
+	PieceScore[side][0][squares[side][E2]] = 0;
+	PieceScore[side][2][squares[side][G2]] = 8;
+	PieceScore[side][2][squares[side][F1]] = -10;
+	PieceScore[side][1][squares[side][G1]] = -16;	
 }

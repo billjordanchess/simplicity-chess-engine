@@ -1,4 +1,3 @@
-//book.cpp
 #include "globals.h"
 
 extern int hash_start, hash_dest;

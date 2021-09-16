@@ -1,105 +1,89 @@
 #include "globals.h"
 
-BITBOARD SetBu(const int s, const int v);
+BITBOARD SetTargets(const int s, const int v);
+int ThreatScore(const int s, const int xs, const int sq, const int val, const int best);
 
-int Blunder(const int cv, const int to, const int flags)
+int Blunder(const int to, const int flags)
 {
 	int bc = 0;
-
-	//if(cv && flags & CHECK)
-   //	 return 0;//??
-
-	if (cv)
+	bc = BestCapture(side, xside, bit_units[xside]);
+	if (bc > 0)
 	{
-		if (piece_value[b[to]] <= cv)
-			return 0;
-		if (b[to] == 3 && cv == 300)
-			return 0;
-		if (flags & CHECK)
-		{
-			if (difference[to][pieces[side][5][0]] == 1)
-			{
-				if (Attack(xside, to) == 0)
-				{
-					return cv - piece_value[b[to]];// + HISTORY_LIMIT +1000;
-				}
-				if (CheckAttack(side, to))
-				{
-					return cv - piece_value[b[to]];// + HISTORY_LIMIT +1000;
-				}
-				return 0;
-			}
-			if (BestCaptureSquare(side, xside, to, b[to]) > 0)
-				bc = piece_value[b[to]];
-		}
-		else
-		{
-			BITBOARD bu = SetBu(xside, cv);
-			bc = BestCapture2(side, xside, bu);
-		}
-		if (bc > cv)
-		{
-			return cv - bc;// + HISTORY_LIMIT +1000;
-			//if(bc>500) g->score += HISTORY_LIMIT +1000;
-		}
-		return 0;
+		return -bc;
 	}
-	//end captures
+	return 0;
+}
 
+int BlunderCapture(const int cv, const int to, const int flags)
+{
+	int bc = 0;
+	if (piece_value[b[to]] <= cv)
+		return 0;
+	if (b[to] == 3 && cv == 300)
+		return 0;
 	if (flags & CHECK)
+
 	{
 		if (difference[to][pieces[side][5][0]] == 1)
 		{
 			if (Attack(xside, to) == 0)
 			{
-				return -piece_value[b[to]];
+				return cv - piece_value[b[to]];
 			}
-			if (b[to] == 4 && CheckAttack(side, to))
+			if (CheckAttack(side, to))
 			{
-				return -900;
+				return cv - piece_value[b[to]];
 			}
 			return 0;
 		}
 		if (BestCaptureSquare(side, xside, to, b[to]) > 0)
+			bc = piece_value[b[to]];
+	}
+	else
+	{
+		BITBOARD bu = SetTargets(xside, cv);
+		bc = BestCapture2(side, xside, bu);
+	}
+	if (bc > cv)
+	{
+		return cv - bc;
+	}
+	return 0;
+}
+
+int BlunderCheck(const int to, const int flags)
+{
+	if (difference[to][pieces[side][5][0]] == 1)
+	{
+		if (Attack(xside, to) == 0)
 		{
-			return 25 - piece_value[b[to]];//more for check 11/5/14
+			return -piece_value[b[to]];
+		}
+		if (b[to] == 4 && CheckAttack(side, to))
+		{
+			return -900;
 		}
 		return 0;
 	}
-	//end check
-	bc = BestCapture(side, xside, bit_units[xside]);// & not_mask[to]);//does not need to
-
-	if (bc > 0)
+	if (BestCaptureSquare(side, xside, to, b[to]) > 0)
 	{
-		return -bc;
+		return 25 - piece_value[b[to]];//more for check 11/5/14
 	}
-
 	return 0;
 }
 
 int BlunderThreat(const int threat, const int ts, const int td, const int cv, const int to, const int flags)
 {
 	int bc;
-	//*/
 	if (flags & CAPTURE)
 	{
 		if (piece_value[b[to]] <= cv)
 			return 0;
-		/*
-		BITBOARD bu = bit_units[xside];
-		int best = piece_value[game_list[hply-1].capture];
-		SetBu(xside,best,bu);
-	   bc = BestCapture(side,xside,bu) - 25;
-	   */
 		bc = BestCapture(side, xside, mask[to] | mask[td]) - 25;//
 
 		if (bc > cv)
 		{
-			return cv - bc;// + HISTORY_LIMIT +1000;	
-		}
-		if (to == ts)
-		{
-			//g->score += threat;
+			return cv - bc;	
 		}
 		return 0;
 	}
@@ -185,7 +169,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 			if (b[sq] > 0 || Attack(xs, sq) == 0)
 			{
 				best = piece_value[b[sq]];
-				bu = SetBu(xs, best);
+				bu = SetTargets(xs, best);
 			}
 		else
 		{
@@ -193,7 +177,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 			if(best2 >best)
 			{
 				best = best2;
-				bu = SetBu(xs,best);
+				bu = SetTargets(xs,best);
 			}
 		}
 	}
@@ -211,7 +195,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 				if (b[sq] > 2 || Attack(xs, sq) == 0)//was >2
 				{
 					best = piece_value[b[sq]];
-					bu = SetBu(xs, best);
+					bu = SetTargets(xs, best);
 				}
 		   else
 		   {
@@ -219,7 +203,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 			   if(best2 >best)
 			   {
 				   best = best2;
-				   bu = SetBu(xs,best);
+				   bu = SetTargets(xs,best);
 			   }
 		   }
 		}
@@ -240,7 +224,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 					if (b[sq] > 2 || Attack(xs, sq) == 0)//was ?2
 					{
 						best = piece_value[b[sq]];
-						bu = SetBu(xs, best);
+						bu = SetTargets(xs, best);
 					}
 				   else
 				   {
@@ -248,7 +232,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 					   if(best2 >best)
 					   {
 						   best = best2;
-						   bu = SetBu(xs,best);
+						   bu = SetTargets(xs,best);
 					   }
 				   }
 			}
@@ -270,7 +254,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 					if (b[sq] > 3 || Attack(xs, sq) == 0)
 					{
 						best = piece_value[b[sq]];
-						bu = SetBu(xs, best);
+						bu = SetTargets(xs, best);
 					}
 				  else
 				  {
@@ -278,7 +262,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 					  if(best2 >best)
 					  {
 						  best = best2;
-						  bu = SetBu(xs,best);
+						  bu = SetTargets(xs,best);
 					  }
 				  }
 			}
@@ -300,7 +284,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 					if (Attack(xs, sq) == 0)
 					{
 						best = piece_value[b[sq]];
-						bu = SetBu(xs, best);
+						bu = SetTargets(xs, best);
 					}
 			   else
 			   {
@@ -308,7 +292,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 				   if(best2 >best)
 				   {
 					   best = best2;
-					   bu = SetBu(xs,best);
+					   bu = SetTargets(xs,best);
 				   }
 			   }
 			}
@@ -327,7 +311,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 	return best;
 }
 
-BITBOARD SetBu(const int s, const int v)
+BITBOARD SetTargets(const int s, const int v)
 {
 	if (v == 100) return bit_pieces[s][1] | bit_pieces[s][2] | bit_pieces[s][3] | bit_pieces[s][4];
 	if (v == 300) return bit_pieces[s][3] | bit_pieces[s][4];
@@ -358,7 +342,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 	}
 
 	BITBOARD bu = 0;
-	//
+	
 	int diff = alpha - (piece_mat[s] + pawn_mat[s] - piece_mat[xs] - pawn_mat[xs]) - 100;
 
 	if (diff < 900)
@@ -399,7 +383,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 				best = piece_value[b[sq]];
 				threat_start = pawnleft[xs][sq];
 				threat_dest = sq;
-				bu = SetBu(xs, best);
+				bu = SetTargets(xs, best);
 			}
 		else
 		{
@@ -409,7 +393,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 		   best = b3;
 		   threat_start = pawnleft[xs][sq];
 		   threat_dest = sq;
-		   bu = SetBu(xs, best);
+		   bu = SetTargets(xs, best);
 		  }
 		}
 	}
@@ -423,7 +407,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 				best = piece_value[b[sq]];
 				threat_start = pawnright[xs][sq];
 				threat_dest = sq;
-				bu = SetBu(xs, best);
+				bu = SetTargets(xs, best);
 			}
 		 else
 		 {
@@ -433,7 +417,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 			best = b3;
 			threat_start = pawnright[xs][sq];
 			threat_dest = sq;
-			bu = SetBu(xs, best);
+			bu = SetTargets(xs, best);
 		   }
 		}
 	}
@@ -452,7 +436,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 					best = piece_value[b[sq]];
 					threat_start = i;
 					threat_dest = sq;
-					bu = SetBu(xs, best);
+					bu = SetTargets(xs, best);
 				}
 				else
 				{
@@ -463,7 +447,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 							best = b[sq] - 300;
 							threat_start = i;
 							threat_dest = sq;
-							bu = SetBu(xs, best);
+							bu = SetTargets(xs, best);
 						}
 					}
 					  else
@@ -474,7 +458,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 						 best = b3;
 						 threat_start = i;
 						 threat_dest = sq;
-						 bu = SetBu(xs, best);
+						 bu = SetTargets(xs, best);
 						}
 				 }
 				}
@@ -498,7 +482,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 						best = piece_value[b[sq]];
 						threat_start = i;
 						threat_dest = sq;
-						bu = SetBu(xs, best);
+						bu = SetTargets(xs, best);
 					}
 				  else
 				  {
@@ -508,7 +492,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 					 best = b3;
 					 threat_start = i;
 					 threat_dest = sq;
-					 bu = SetBu(xs, best);
+					 bu = SetTargets(xs, best);
 					}
 			}
 			}
@@ -531,7 +515,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 						best = piece_value[b[sq]];
 						threat_start = i;
 						threat_dest = sq;
-						bu = SetBu(xs, best);
+						bu = SetTargets(xs, best);
 					}
 				  else
 				  {
@@ -541,7 +525,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 					 best = b3;
 					 threat_start = i;
 					 threat_dest = sq;
-					 bu = SetBu(xs, best);
+					 bu = SetTargets(xs, best);
 					}
 			}
 			}
@@ -564,7 +548,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 						best = piece_value[b[sq]];
 						threat_start = i;
 						threat_dest = sq;
-						bu = SetBu(xs, best);
+						bu = SetTargets(xs, best);
 					}
 					  else
 					  {
@@ -574,7 +558,7 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 						 best = b3;
 						 threat_start = i;
 						 threat_dest = sq;
-						 bu = SetBu(xs, best);
+						 bu = SetTargets(xs, best);
 						}
 				}
 			}
@@ -590,8 +574,6 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 		if (piece_value[b[sq]] > best)
 			if (Attack(xs, sq) == 0)
 			{
-				//if(piece_value[b[sq]] < best)
-				//	z();
 				best = piece_value[b[sq]];
 				threat_start = i;
 				threat_dest = sq;
@@ -614,9 +596,9 @@ int MakeThreat(const int s, const int xs, const int threat_start, const int thre
 	{
 		return piece_value[b[threat_dest]];
 	}
-	//if(GetScore2(s,xs,threat_dest)>0)
+	if(GetScore2(s,xs,threat_dest)>0)
 	{
-		;// return piece_value[b[threat_dest]];
+		 return piece_value[b[threat_dest]];
 	}
 	return 0;
 }
@@ -634,20 +616,15 @@ void MoveAttacked(const int xs,const int sq, const int attacker, const int ply)
 				|| (b[from] == 2 && bit_bishopmoves[to] & mask[sq] && !(bit_between[to][sq] & bit_all))
 				|| (b[from] == 3 && bit_rookmoves[to] & mask[sq] && !(bit_between[to][sq] & bit_all))
 				|| (b[from] == 4 && bit_queenmoves[to] & mask[sq] && !(bit_between[to][sq] & bit_all))
-				|| b[from] == 5 && bit_kingmoves[to] & mask[sq] && !(bit_between[to][sq] & bit_all)
+				|| (b[from] == 5 && bit_kingmoves[to] & mask[sq])
 				)
 			{
-				//Alg(from, to);
-				//z();
 				move_list[x].score += 800;
 			}
 		}
 		return;
 	}
-	int score = piece_value[b[sq]];//could add near capture score 21/4/17
-	int weaker = 0;
-	if (piece_value[b[attacker]] < score)
-		weaker = 1;//9/8/21
+	int score = piece_value[b[sq]];
 
 	BITBOARD bu = 0;
 	if (LookUpPawn())
@@ -689,24 +666,22 @@ void MoveAttacked(const int xs,const int sq, const int attacker, const int ply)
 	bu &= ~(bit_pieces[xs][1] | bit_pieces[xs][2] | bit_pieces[xs][3] | bit_pieces[xs][4]);
 
 	for (int x = first_move[ply]; x < first_move[ply + 1]; x++)
-	{
-		if (move_list[x].score <= KILLER_SCORE && move_list[x].score > score && !(move_list[x].flags & CHECK))
-			 move_list[x].score = 0;
+	{   
+		if (move_list[x].flags & CAPTURE && b[move_list[x].to] >= b[sq])
+		{
+			if(move_list[x].to == attacker)
+				move_list[x].score += score;
+			continue;
+		}
+		if (move_list[x].flags & CHECK)
+			continue;
 		if (move_list[x].from == sq && !(mask[move_list[x].to] & bu))
 		{
-			move_list[x].score += score;
-			//if (x == first_move[ply + 1]-1 && move_list[x+1].from != sq)
-			//	break;
-		}
-		if (b[move_list[x].from] == 0 && weaker == 0 && bit_pawndefends[side][sq] & mask[move_list[x].to])
-		{
-			//Alg(move_list[x].from, move_list[x].to);
-			//z();
-			//move_list[x].score += score-10;
+			move_list[x].score += score + KILLER_SCORE;
+			if (x < first_move[ply + 1]-1 && move_list[x+1].from != sq)
+				break;
 		}
 	}
-	//PrintBitBoard(bu);
-	//ShowAll(ply);//??
 }
 
 int BestThreat(const int s, const int xs, const int diff)
@@ -725,11 +700,10 @@ int BestThreat(const int s, const int xs, const int diff)
 		i = NextBit(b1);
 		b1 &= not_mask[i];
 		sq = pawnplus[s][i];
-		if (b[sq] == EMPTY && Attack(xs, sq) == 0)//no behind
+		if (b[sq] == EMPTY && Attack(xs, sq) == 0 && 
+			!(mask_cols[i] & mask[pieces[xs][3][0]] && !(bit_between[i][NextBit(pieces[xs][3][0])] & bit_all)))
 		{
 			return 1;
-			//Alg(i,sq);
-			//z();
 		}
 	}
 
@@ -763,39 +737,18 @@ int BestThreat(const int s, const int xs, const int diff)
 	{
 		sq = NextBit(b1);
 		b1 &= not_mask[sq];
-
-		if (b[sq] > 0 || Attack(xs, sq) == 0)
-		{
+		if (ThreatScore(s, xs, sq, 0, best))
 			return 1;
-		}
-		//*
-		else
-		{
-			if (GetScore2(s, xs, sq) > best)
-			{
-				return 1;
-			}
-		}
-		//*/
 	}
 
 	while (b2)
 	{
 		sq = NextBit(b2);
 		b2 &= not_mask[sq];
-		if (b[sq] > 0 || Attack(xs, sq) == 0)
-		{
+		if (ThreatScore(s, xs, sq, 0, best))
 			return 1;
-		}
-		//*
-		else
-		{
-			if (GetScore2(s, xs, sq) > best)
-				return 1;
-		}
-		//*/
 	}
-	//*/
+
 	for (x = 0; x < total[s][1]; x++)
 	{
 		i = pieces[s][1][x];
@@ -804,31 +757,11 @@ int BestThreat(const int s, const int xs, const int diff)
 		{
 			sq = NextBit(b1);
 			b1 &= not_mask[sq];
-
-			if (Attack(xs, sq) == 0)
-			{
+			if (ThreatScore(s, xs, sq, 2, best))
 				return 1;
-			}
-			else
-			{
-				if (b[sq] > 2)
-				{
-					return 1;
-				}
-				//*
-				else
-				{
-					if (GetScore2(s, xs, sq) > best)
-					{
-						return 1;
-					}
-				}
-				//*/
-			}
 		}
 	}
 
-	//threat_start line pieces
 	for (x = 0; x < total[s][2]; x++)
 	{
 		i = pieces[s][2][x];
@@ -839,19 +772,8 @@ int BestThreat(const int s, const int xs, const int diff)
 			b1 &= not_mask[sq];
 			if (!(bit_between[i][sq] & bit_all))
 			{
-				if (b[sq] > 2 || Attack(xs, sq) == 0)
-				{
+				if (ThreatScore(s, xs, sq, 2, best))
 					return 1;
-				}
-				//*
-				else
-				{
-					if (GetScore2(s, xs, sq) > best)
-					{
-						return 1;
-					}
-				}
-				//*/
 			}
 		}
 	}
@@ -866,19 +788,8 @@ int BestThreat(const int s, const int xs, const int diff)
 			b1 &= not_mask[sq];
 			if (!(bit_between[i][sq] & bit_all))
 			{
-				if (b[sq] > 3 || Attack(xs, sq) == 0)
-				{
+				if(ThreatScore(s, xs, sq, 3, best))
 					return 1;
-				}
-				//*
-				else
-				{
-					if (GetScore2(s, xs, sq) > best)
-					{
-						return 1;
-					}
-				}
-				//*/
 			}
 		}
 	}
@@ -897,7 +808,6 @@ int BestThreat(const int s, const int xs, const int diff)
 				{
 					return 1;
 				}
-				//*
 				else
 				{
 					if (GetScore2(s, xs, sq) > best)
@@ -905,7 +815,6 @@ int BestThreat(const int s, const int xs, const int diff)
 						return 1;
 					}
 				}
-				//*/
 			}
 		}
 	}
@@ -920,6 +829,18 @@ int BestThreat(const int s, const int xs, const int diff)
 		{
 			return 1;
 		}
+	}
+	return 0;
+}
+
+int ThreatScore(const int s,const int xs,const int sq,const int p,const int best)
+{
+	if (b[sq] > p  || Attack(xs, sq) == 0)
+		return 1;
+	else
+	{
+		if (GetScore2(s, xs, sq) > best)
+			return 1;
 	}
 	return 0;
 }
@@ -943,7 +864,7 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 	{
 		sq = NextBit(b1);
 		b1 &= not_mask[sq];
-		bu &= not_mask[sq];//11/5/14
+		bu &= not_mask[sq];
 
 		if (b[sq] > 0 || Attack(xs, sq) == 0)
 		{
@@ -951,7 +872,7 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 		}
 		else
 		{
-			//return GetScore2(s,xs,sq);
+			return GetScore2(s,xs,sq);
 		}
 	}
 	int x;
@@ -963,15 +884,15 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 		{
 			sq = NextBit(b2);
 			b2 &= not_mask[sq];
-			bu &= not_mask[sq];//11/5/14
+			bu &= not_mask[sq];
 
-			if (b[sq] > 2 || Attack(xs, sq) == 0)//was >2
+			if (b[sq] > 2 || Attack(xs, sq) == 0)
 			{
 				return piece_value[b[sq]];
 			}
 			else
 			{
-				//return GetScore2(s,xs,sq);
+				return GetScore2(s,xs,sq);
 			}
 		}
 	}
@@ -986,14 +907,14 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 			b2 &= not_mask[sq];
 			if (!(bit_between[i][sq] & bit_all))
 			{
-				bu &= not_mask[sq];//11/5/14
-				if (b[sq] > 2 || Attack(xs, sq) == 0)//was ?2
+				bu &= not_mask[sq];
+				if (b[sq] > 2 || Attack(xs, sq) == 0)
 				{
 					return piece_value[b[sq]];
 				}
 				else
 				{
-					//return GetScore2(s,xs,sq);
+					return GetScore2(s,xs,sq);
 				}
 			}
 		}
@@ -1009,14 +930,14 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 			b2 &= not_mask[sq];
 			if (!(bit_between[i][sq] & bit_all))
 			{
-				bu &= not_mask[sq];//11/5/14
+				bu &= not_mask[sq];
 				if (b[sq] > 3 || Attack(xs, sq) == 0)
 				{
 					return piece_value[b[sq]];
 				}
 				else
 				{
-					//return GetScore2(s,xs,sq);
+					return GetScore2(s,xs,sq);
 				}
 			}
 		}
@@ -1032,14 +953,14 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 			b2 &= not_mask[sq];
 			if (!(bit_between[i][sq] & bit_all))
 			{
-				bu &= not_mask[sq];//11/5/14
+				bu &= not_mask[sq];
 				if (b[sq] > 4 || Attack(xs, sq) == 0)
 				{
 					return piece_value[b[sq]];
 				}
 				else
 				{
-					//return GetScore2(s,xs,sq);
+					return GetScore2(s,xs,sq);
 				}
 			}
 		}

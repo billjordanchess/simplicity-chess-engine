@@ -14,7 +14,7 @@ unsigned int MATETHREAT = (1 << 10);
 unsigned int DEFEND = (1 << 11);
 unsigned int PAWNMOVE = (1 << 12);
 unsigned int COUNTER = (1 << 13);
-unsigned int EP = (1 << 13);
+unsigned int EP = (1 << 14);
 
 int nextq[] = { 1,2,3,4,5,6,7,8,0 };
 int nextr[] = { 2,4,6,8,0 };
@@ -54,7 +54,7 @@ void PushBishop(const int from, const int to);
 void PushRook(const int from, const int to);
 void PushQueen(const int from, const int to);
 void PushKing(const int from, const int to);
-void PushCastle(const int from, const int to);
+void AddCastle(const int from, const int to);
 
 void CheckPawn(const int from, const int to);
 void CheckKnight(const int from, const int to);
@@ -62,7 +62,7 @@ void CheckBishop(const int from, const int to);
 void CheckRook(const int from, const int to);
 void CheckQueen(const int from, const int to);
 
-BITBOARD SetBu(const int s, const int v);
+BITBOARD SetTargets(const int s, const int v);
 
 move_data* g;
 game* h;
@@ -99,7 +99,7 @@ int GetChecker(const int s, const int xs, const int sq)
 	return -1;
 }
 
-void gen(const int c)
+void Gen(const int c)
 {
 	if(c>0)
 	{
@@ -115,7 +115,6 @@ void gen(const int c)
 
 	BITBOARD b1, b2, bp;
 
-	//*
 	b1 = bit_pieces[side][0] & mask_ranks[side][6];
 
 	while (b1)
@@ -125,23 +124,22 @@ void gen(const int c)
 		sq = pawnplus[side][i];
 		if (bit_left[side][i] & bit_units[xside])
 		{
-			gen_promote(i, pawnleft[side][i]);
+			GenPromote(i, pawnleft[side][i]);
 		}
 		if (bit_right[side][i] & bit_units[xside])
 		{
-			gen_promote(i, pawnright[side][i]);
+			GenPromote(i, pawnright[side][i]);
 		}
 		if (b[sq] == EMPTY)
 		{
-			gen_promote(i, sq);
+			GenPromote(i, sq);
 		}
 	}
-	//*/
 
 	if (side == 0)
 	{
-		b1 = bit_pieces[0][0] & ((bit_units[1] & not_h_file) >> 7);// &m0;
-		b2 = bit_pieces[0][0] & ((bit_units[1] & not_a_file) >> 9);// &m0;
+		b1 = bit_pieces[0][0] & ((bit_units[1] & not_h_file) >> 7) & m0;
+		b2 = bit_pieces[0][0] & ((bit_units[1] & not_a_file) >> 9) & m0;
 		bp = bit_pieces[0][0] & ~(bit_all >> 8);
 	}
 	else
@@ -177,16 +175,16 @@ void gen(const int c)
 
 	if (side == 0) {
 		if (castle & 1 && !(bit_between[H1][E1] & bit_all) && Attack(1, F1) == 0)
-			PushCastle(E1, G1);
+			AddCastle(E1, G1);
 		if (castle & 2 && !(bit_between[A1][E1] & bit_all) &&
 			Attack(1, D1) == 0)
-			PushCastle(E1, C1);
+			AddCastle(E1, C1);
 	}
 	else {
 		if (castle & 4 && !(bit_between[E8][H8] & bit_all) && Attack(0, F8) == 0)
-			PushCastle(E8, G8);
+			AddCastle(E8, G8);
 		if (castle & 8 && !(bit_between[E8][A8] & bit_all) && Attack(0, D8) == 0)
-			PushCastle(E8, C8);
+			AddCastle(E8, C8);
 	}
 	int x;
 	for (x = 0; x < total[side][1]; x++)
@@ -235,7 +233,7 @@ void gen(const int c)
 	first_move[ply + 1] = mc;
 }
 
-void gen_caps(const int diff, const int depth)
+void GenCapsChecks(const int diff, const int depth)
 {
 	first_move[ply + 1] = first_move[ply];
 	mc = first_move[ply];
@@ -243,7 +241,7 @@ void gen_caps(const int diff, const int depth)
 	int sq;
 	BITBOARD b1, b2;
 	epflag = 0;
-	//*
+	
 	b1 = bit_pieces[side][0] & mask_ranks[side][6];
 
 	while (b1)
@@ -253,18 +251,18 @@ void gen_caps(const int diff, const int depth)
 		sq = pawnplus[side][i];
 		if (bit_left[side][i] & bit_units[xside])
 		{
-			gen_promote(i, pawnleft[side][i]);
+			GenPromote(i, pawnleft[side][i]);
 		}
 		if (bit_right[side][i] & bit_units[xside])
 		{
-			gen_promote(i, pawnright[side][i]);
+			GenPromote(i, pawnright[side][i]);
 		}
 		if (b[sq] == EMPTY)
 		{
-			gen_promote(i, sq);
+			GenPromote(i, sq);
 		}
 	}
-	//*/
+	
 	BITBOARD bu = 0;
 
 	if (diff < 900)
@@ -452,7 +450,7 @@ void gen_caps(const int diff, const int depth)
 	first_move[ply + 1] = mc;
 }
 
-void gen_caps2(const int diff)
+void GenCaps(const int diff)
 {
 	first_move[ply + 1] = first_move[ply];
 	mc = first_move[ply];
@@ -709,17 +707,17 @@ void GenEP()
 
 		if (bit_left[xside][sq] & bit_pieces[side][0])
 		{
-			gen_ep(pawnleft[xside][sq], sq);
+			GenEp2(pawnleft[xside][sq], sq);
 		}
 
 		if (bit_right[xside][sq] & bit_pieces[side][0])
 		{
-			gen_ep(pawnright[xside][sq], sq);
+			GenEp2(pawnright[xside][sq], sq);
 		}
 	}
 }
 
-void gen_ep(const int from, const int to)
+void GenEp2(const int from, const int to)
 {
 	g = &move_list[mc++];
 	g->flags = CAPTURE | EP;
@@ -728,7 +726,7 @@ void gen_ep(const int from, const int to)
 	g->score = px[0];
 }
 
-void PushCastle(const int from, const int to)
+void AddCastle(const int from, const int to)
 {
 	g = &move_list[mc++];
 	g->flags = CASTLE;
@@ -872,8 +870,6 @@ void PushQueen(const int from, const int to)
 	{
 		g->flags |= CHECK;
 		g->score = check_history[b[from]][to];
-		//g->score += CAPTURE_SCORE;
-		//*
 		if (difference[pieces[xside][4][0]][to] == 2)
 			g->score += CAPTURE_SCORE;
 		else if (bit_kingmoves[pieces[xside][5][0]] & mask[to])
@@ -883,7 +879,6 @@ void PushQueen(const int from, const int to)
 			else
 				g->score += 150 + CAPTURE_SCORE;
 		}
-		//*/
 	}
 }
 
@@ -946,7 +941,7 @@ void CheckQueen(const int from, const int to)
 	g->score = check_history[4][to];
 }
 
-void gen_promote(const int from, const int to)
+void GenPromote(const int from, const int to)
 {
 	if (ply < 1 && currentmax < 2)// && side != computer_side)
 	{
@@ -1019,16 +1014,16 @@ void GenNon()
 
 	if (side == 0) {
 		if (castle & 1 && !(bit_between[H1][E1] & bit_all) && Attack(1, F1) == 0)
-			PushCastle(E1, G1);
+			AddCastle(E1, G1);
 		if (castle & 2 && !(bit_between[A1][E1] & bit_all) &&
 			Attack(1, D1) == 0)
-			PushCastle(E1, C1);
+			AddCastle(E1, C1);
 	}
 	else {
 		if (castle & 4 && !(bit_between[E8][H8] & bit_all) && Attack(0, F8) == 0)
-			PushCastle(E8, G8);
+			AddCastle(E8, G8);
 		if (castle & 8 && !(bit_between[E8][A8] & bit_all) && Attack(0, D8) == 0)
-			PushCastle(E8, C8);
+			AddCastle(E8, C8);
 	}
 	int x;
 	for (x = 0; x < total[side][1]; x++)

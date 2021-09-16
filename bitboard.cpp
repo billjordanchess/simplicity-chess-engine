@@ -261,7 +261,7 @@ BITBOARD bit_pawncaptures[2][64];
 BITBOARD bit_pawndefends[2][64];
 BITBOARD bit_left[2][64];
 BITBOARD bit_right[2][64];
-BITBOARD bit_pawnmoves[2][64];
+//BITBOARD bit_pawnmoves[2][64];
 BITBOARD bit_knightmoves[64];
 BITBOARD bit_bishopmoves[64];
 BITBOARD bit_rookmoves[64];
@@ -346,8 +346,6 @@ void SetBit(BITBOARD& bb, int square);
 void SetBitFalse(BITBOARD& bb, int square);
 void PrintBitBoard(BITBOARD bb);
 void PrintCell(int x, BITBOARD bb);
-
-//BITBOARD GetNextBit(BITBOARD bb);
 
 void SetBit(BITBOARD& bb, int square)
 {
@@ -465,7 +463,6 @@ void SetBits()
             SetBit(bit_color[1], x);
     }
     memset(bit_pawncaptures, 0, sizeof(bit_pawncaptures));
-    memset(bit_pawnmoves, 0, sizeof(bit_pawnmoves));
     memset(bit_knightmoves, 0, sizeof(bit_knightmoves));
     memset(bit_bishopmoves, 0, sizeof(bit_bishopmoves));
     memset(bit_rookmoves, 0, sizeof(bit_rookmoves));
@@ -526,7 +523,7 @@ void SetBits()
 
     for (x = 0; x < 64; x++)
     {
-        pawnleft[0][x] = -1;//16/5/12
+        pawnleft[0][x] = -1;
         pawnleft[1][x] = -1;
         pawnright[0][x] = -1;
         pawnright[1][x] = -1;
@@ -582,17 +579,14 @@ void SetBits()
         if (row[x] < 7)
         {
             pawnplus[0][x] = x + 8;
-            SetBit(bit_pawnmoves[0][x], x + 8);
         }
         if (row[x] < 6)
         {
             pawndouble[0][x] = x + 16;
-            //SetBit(bit_pawnmoves[0][x],x+16);
         }
         if (row[x] > 0)
         {
             pawnplus[1][x] = x - 8;
-            SetBit(bit_pawnmoves[1][x], x - 8);
         }
         if (row[x] > 1)
         {
@@ -614,7 +608,7 @@ void SetBits()
             }
             if (row[x] == 7 - y)
             {
-                SetBit(mask_ranks[1][y], x);      //?
+                SetBit(mask_ranks[1][y], x);      
             }
         }
 
@@ -826,7 +820,7 @@ void SetDir()
     int c1, r1;
     for (x = 0; x < 64; x++)
     {
-        for (y = 0; y < 64; y++)//.69
+        for (y = 0; y < 64; y++)
         {
             c1 = abs(col[x] - col[y]);
             r1 = abs(row[x] - row[y]);
@@ -1238,7 +1232,7 @@ void SetKingMoves()
     {
         b1 = 0; c = 0; nc = 0;
         for (int k = 0; k < 15; k++)
-            rooklist[x][k].next = -1;//
+            rooklist[x][k].next = -1;
         for (int j = 0; j < 8; j += 2)
         {
             n = x;

@@ -35,9 +35,6 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="simplicity.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="attack.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

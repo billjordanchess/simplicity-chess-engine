@@ -460,3 +460,5 @@ int GetBest2(int ply)
 	return first_move[ply] + best;
 	//*/
 }
+
+

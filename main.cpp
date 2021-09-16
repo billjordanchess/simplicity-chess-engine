@@ -14,9 +14,6 @@ void ShowHelp();
 void SetUp();
 void xboard();
 
-void ConvertFen(char* file);//
-void SaveAsc(int side);//
-
 int board_color[64] =
 {
 	1, 0, 1, 0, 1, 0, 1, 0,
@@ -58,7 +55,7 @@ extern int hash_start, hash_dest;
 int main()
 {
 	printf("Simplicity Chess Engine no null\n");
-	printf("Version 1.0, 6/9/21\n");
+	printf("Version 1.1, 16/9/21\n");
 	printf("Bill Jordan 2021\n");
 	printf("FIDE Master and 2021 state champion.\n");
 	printf("I have published a number of chess books\n");
@@ -91,7 +88,7 @@ int main()
 	//ConvertFen("c:\\diagrams\\pos.txt");
 
 	check = Attack(xside, pieces[side][5][0]);
-	gen(check);
+	Gen(check);
 	computer_side = EMPTY;
 	player[0] = 0;
 	player[1] = 0;
@@ -122,7 +119,7 @@ int main()
 				computer_side = EMPTY;
 				print_board();
 				check = Attack(xside, pieces[side][5][0]);
-				gen(check);
+				Gen(check);
 				continue;
 			}
 			printf(" collisions %d ", collisions);
@@ -131,6 +128,15 @@ int main()
 
 			printf("Computer's move: %s\n", MoveString(hash_start, hash_dest, 0)); printf("\n");
 			MakeMove(hash_start, hash_dest,0);
+			
+			printf("\n cut nodes %d ", cut_nodes);
+			printf(" first nodes %d ", first_nodes);
+			if (cut_nodes > 0)
+				printf(" percent %d %", (first_nodes * 100 / cut_nodes));
+			if(cut_nodes>0)
+			printf(" av cut %d %",av_nodes/cut_nodes);
+			if (a_nodes > 0)
+				printf(" av sort %d %", (100 - b_nodes * 100 / a_nodes));
 
 			SetMaterial();
 
@@ -147,7 +153,7 @@ int main()
 
 			first_move[0] = 0;
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			PrintResult();
 			printf(" turn "); printf("%d", turn++);
 			print_board();
@@ -182,7 +188,7 @@ int main()
 		{
 			printf("Moves \n");
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			for (int i = 0; i < first_move[1]; ++i)
 			{
 				printf("%s\n", MoveString(move_list[i].from, move_list[i].to, 0));
@@ -246,12 +252,12 @@ int main()
 			if (!hply)
 				continue;
 			computer_side = EMPTY;
-			takeback();
+			UnMakeMove();
 			ply = 0;
 			if (first_move[0] != 0)
 				first_move[0] = 0;
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			continue;
 		}
 		if (!strcmp(s, "xboard"))
@@ -263,7 +269,7 @@ int main()
 		ply = 0;
 		first_move[0] = 0;
 		check = Attack(xside, pieces[side][5][0]);
-		gen(check);
+		Gen(check);
 		m = ParseMove(s);
 		//Attack 26/4/21
 		if (m == -1 || !MakeMove(move_list[m].from, move_list[m].to,0))
@@ -319,10 +325,7 @@ int ParseMove(char* s)
 		}
 	return -1;
 }
-/*
-print_board() displays the b
-The console object is only used to display in colour.
-*/
+
 void print_board()
 {
 	HANDLE hConsole;
@@ -435,7 +438,7 @@ void xboard()
 			think();
 			SetMaterial();
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			currentkey = GetKey();
 			currentlock = GetLock();
 			lookup = LookUp2(side);
@@ -447,7 +450,6 @@ void xboard()
 			}
 			else
 				printf(" lookup=0 ");
-
 			move_list[0].from = hash_start;
 			move_list[0].to = hash_dest;
 			printf("move %s\n", MoveString(hash_start, hash_dest, 0));
@@ -456,7 +458,7 @@ void xboard()
 
 			ply = 0;
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			PrintResult();
 			continue;
 		}
@@ -485,7 +487,7 @@ void xboard()
 			side = 0;
 			xside = 1;
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			computer_side = 1;
 			continue;
 		}
@@ -494,7 +496,7 @@ void xboard()
 			side = 1;
 			xside = 0;
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			computer_side = 0;
 			continue;
 		}
@@ -510,6 +512,7 @@ void xboard()
 		{
 			sscanf_s(line, "sd %d", &max_depth);
 			max_time = 1 << 25;
+			fixed_depth = 1;
 			continue;
 		}
 		if (!strcmp(command, "time"))
@@ -556,21 +559,21 @@ void xboard()
 		{
 			if (!hply)
 				continue;
-			takeback();
+			UnMakeMove();
 			ply = 0;
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			continue;
 		}
 		if (!strcmp(command, "remove"))
 		{
 			if (hply < 2)
 				continue;
-			takeback();
-			takeback();
+			UnMakeMove();
+			UnMakeMove();
 			ply = 0;
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			continue;
 		}
 		if (!strcmp(command, "post"))
@@ -583,10 +586,15 @@ void xboard()
 			post = 0;
 			continue;
 		}
+		if (!strcmp(command, "d"))
+		{
+			print_board();
+			continue;
+		}
 
 		first_move[0] = 0;
 		check = Attack(xside, pieces[side][5][0]);
-		gen(check);
+		Gen(check);
 
 		m = ParseMove(line);
 		if (m == -1 || !MakeMove(move_list[m].from, move_list[m].to,0))
@@ -595,7 +603,7 @@ void xboard()
 		{
 			ply = 0;
 			check = Attack(xside, pieces[side][5][0]);
-			gen(check);
+			Gen(check);
 			PrintResult();
 		}
 	}
@@ -609,16 +617,14 @@ void PrintResult()
 
 	SetMaterial();
 	check = Attack(xside, pieces[side][5][0]);
-	gen(check);
-	/*
+	Gen(check);
 	for (i = 0; i < first_move[1]; ++i)
-		if (MakeMove(move_list[i].from,move_list[i].to))
+		if (MakeMove(move_list[i].from,move_list[i].to, move_list[i].flags))
 		{
-			takeback();
+			UnMakeMove();
 			flag=1;
 			break;
 		}
-*/
 	if (pawn_mat[0] == 0 && pawn_mat[1] == 0 && piece_mat[0] <= 300 && piece_mat[1] <= 300)
 	{
 		printf("1/2-1/2 {Stalemate}\n");
@@ -629,8 +635,6 @@ void PrintResult()
 	}
 	if (i == first_move[1] && flag == 0)
 	{
-		check = Attack(xside, pieces[side][5][0]);
-		gen(check);
 		print_board();
 		printf(" end of game ");
 
@@ -675,103 +679,7 @@ int reps()
 			r++;
 	return r;
 }
-/*
-int LoadDiagram2(char* file, int num)
-{
-	int x;
-	static int count = 1;
-	char ts[256];
 
-	diagram_file = fopen(file, "r");
-	if (!diagram_file)
-	{
-		printf("Diagram missing.\n");
-		return -1;
-	}
-
-	strcpy_s(fen_name, file);
-
-	for (x = 0; x < num; x++)
-	{
-		fgets(ts, 256, diagram_file);
-		if (!ts) break;
-	}
-	for (x = 0; x < 64; x++)
-	{
-		b[x] = EMPTY;
-	}
-	int c = 0, i = 0, j;
-	while (ts)
-	{
-		if (ts[c] >= '0' && ts[c] <= '8')
-			i += ts[c] - 48;
-		if (ts[c] == '\\')
-			continue;
-		j = Flip[i];
-		switch (ts[c])
-		{
-		case 'K': b[j] = KING; color[j] = 0; i++;
-			pieces[0][5][0] = j; break;
-		case 'Q': b[j] = QUEEN; color[j] = 0; i++; break;
-		case 'R': b[j] = ROOK; color[j] = 0; i++; break;
-		case 'B': b[j] = BISHOP; color[j] = 0; i++; break;
-		case 'N': b[j] = KNIGHT; color[j] = 0; i++; break;
-		case 'P': b[j] = PAWN; color[j] = 0; i++; break;
-		case 'k': b[j] = KING; color[j] = 1; i++;
-			pieces[1][5][0] = j; break;
-		case 'q': b[j] = QUEEN; color[j] = 1; i++; break;
-		case 'r': b[j] = ROOK; color[j] = 1; i++; break;
-		case 'b': b[j] = BISHOP; color[j] = 1; i++; break;
-		case 'n': b[j] = KNIGHT; color[j] = 1; i++; break;
-		case 'p': b[j] = PAWN; color[j] = 1; i++; break;
-		}
-		c++;
-		if (ts[c] == ' ')
-			break;
-		if (i > 63)
-			break;
-	}
-	if (ts[c] == ' ' && ts[c + 2] == ' ')
-	{
-		if (ts[c + 1] == 'w')
-		{
-			side = 0; xside = 1;
-		}
-		if (ts[c + 1] == 'b')
-		{
-			side = 1; xside = 0;
-		}
-	}
-	castle = 15;
-	while (ts[c])
-	{
-		switch (ts[c])
-		{
-		case '-': break;
-		case 'K':if (b[E1] == 5 && mask[E1] & bit_units[0])castle += 1; break;
-		case 'Q':if (b[E1] == 5 && mask[E1] & bit_units[0])castle += 2; break;
-		case 'k':if (b[E8] == 5 && mask[E1] & bit_units[1])castle += 4; break;
-		case 'q':if (b[E8] == 5 && mask[E1] & bit_units[1])castle += 8; break;
-		default:break;
-		}
-		c++;
-	}
-	castle = 0;
-	CloseDiagram();
-	NewPosition();
-	gen(0);//deprec
-
-	printf(" diagram # %d \n", num);
-	count++;
-	if (side == 0)
-		printf("White to move\n");
-	else
-		printf("Black to move\n");
-	printf(" %s \n", ts);
-	hply = 10;//
-	return 0;
-}
-*/
 int LoadDiagram(char* file, int num)
 {
 	int x, n = 0;
@@ -903,26 +811,7 @@ void ShowHelp()
 	printf("undo - Takes back the last move.\n");
 	printf("xboard - Starts xboard.\n");
 }
-/*
-void SetUp()
-{
-	RandomizeHash();
-	SetTables();
-	SetMoves();
-	InitBoard();
-	computer_side = EMPTY;
-	player[0] = 0;
-	player[1] = 0;
-	max_time = 1 << 25;
-	max_depth = 4;
-}
 
-void StartGame()
-{
-	InitBoard();
-	//Gen(side, xside);
-}
-*/
 void SetMaterial()
 {
 	int c;
@@ -988,212 +877,4 @@ char* MoveString(int start, int dest, int promote)
 			col[dest] + 'a',
 			row[dest] + 1);
 	return str;
-}
-
-void ConvertFen(char* file)
-{
-	nodes = 1;//
-
-	printf("convert");
-	diagram_file = fopen(file, "r");
-	if (!diagram_file)
-	{
-		printf("Diagram missing.\n");
-		return;
-	}
-	//SaveTactics("c:\\diagrams\\output.txt", ts);
-	//
-	char a[256000] = "";
-	char line[256];
-	char text[500][256];
-	int c = 0;
-
-	if (diagram_file == NULL) perror("Error opening file");
-	else {
-		while (fgets(line, 256, diagram_file) != NULL)
-		{
-			strcat(a, line);
-			strcpy(text[c], line);
-			c++;
-		}
-		fclose(diagram_file);
-	}
-
-	output_file = fopen("c:\\diagrams\\output.txt", "w");
-	for (int x = 1; x <= c; x++)
-	{
-		LoadDiagram(file, x);
-		printf(" x %d ", x);
-		SaveAsc(0);
-		fwrite(text[x-1], sizeof(char), sizeof(text[x-1]), output_file);
-		fwrite("\n", 1, 1, output_file);
-	}
-	if (output_file)
-		fclose(output_file);
-	output_file = NULL;
-	printf("done");
-	z();
-	return;
-	
-	char p[2], n1[2], f[2], r[2];
-	p[1] = 0;
-	n1[1] = 0;
-	f[1] = 0;
-	r[1] = 0;
-
-	char b[64000] = "";
-
-	int kings = 0;
-	int count;
-	int flag = 0;
-
-	for (int x = 0; x < strlen(a); x++)
-	{
-		flag = 0;
-		if (a[x] == '[' && a[x + 1] != ']')
-		{
-			flag = 1;
-			kings = 0;
-			count = 0;
-			x++;
-			//strcat(b,"kg1,");//3/6/18 missing kings
-
-			while (a[x] != ']')
-			{
-				if (a[x] == ',')//
-				{
-					x++;
-					strcat(b, "/b");
-					count = 0;
-				}
-				if (a[x + 1] == ']' || a[x + 2] == ']')
-					break;
-				p[0] = a[x] - 32;
-				f[0] = a[x + 1];
-				r[0] = a[x + 2];
-				p[1] = 0;
-				f[1] = 0;
-				r[1] = 0;
-				if (count > 0)
-					strcat(b, ",");
-				if (p[0] == 75)
-				{
-					kings++;
-					if (kings > 1)
-						strcat(b, "/b");
-				}
-				strcat(b, p);
-				strcat(b, f);
-				strcat(b, r);
-				x += 3;
-				count++;
-			}
-		}
-		//5/6/18 if(flag==1)
-		{
-			while (a[x] != 10 && a[x] != 13)
-			{
-				p[0] = a[x];
-				p[1] = 0;
-				strcat(b, p);
-				x++;
-			}
-			strcat(b, "\n");
-		}
-	}
-	printf("%s", a);
-	printf(" b %s", b);
-
-	if (diagram_file)
-		fclose(diagram_file);
-	diagram_file = NULL;
-	diagram_file = fopen("c:\\diagrams\\output.txt", "w");
-	fwrite(b, sizeof(char), sizeof(b), diagram_file);
-	if (diagram_file)
-		fclose(diagram_file);
-	diagram_file = NULL;
-	printf("done");
-	z();
-}
-
-void SaveAsc(int side)
-{
-	BITBOARD bb = 0;
-	int sq;
-
-	char a, b;
-	char a2[2], b2[2];
-
-	int c1;
-
-	char position[256] = "$";
-
-	if (side == 1)
-		strcat(position, "w");
-
-	for (int x = 0; x < 2; x++)
-	{
-		for (int y = 5; y >= 0; y--)
-		{
-			bb = bit_pieces[x][y];
-			while (bb)
-			{
-				sq = NextBit(bb);
-				if (x == 1 && y == 5)
-					strcat(position, "/b");
-				if (x == 0)
-					switch (y)
-					{
-					case 0: strcat(position, "P"); break;
-					case 1: strcat(position, "N"); break;
-					case 2: strcat(position, "B"); break;
-					case 3: strcat(position, "R"); break;
-					case 4: strcat(position, "Q"); break;
-					case 5: strcat(position, "K"); break;
-					default:break;
-					}
-				else
-				{
-					switch (y)
-					{
-					case 0: strcat(position, "p"); break;
-					case 1: strcat(position, "n"); break;
-					case 2: strcat(position, "b"); break;
-					case 3: strcat(position, "r"); break;
-					case 4: strcat(position, "q"); break;
-					case 5: strcat(position, "k"); break;
-					default:break;
-					}
-				}
-				a = col[sq] + 'a';
-				b = row[sq] + 1;
-				c1 = col[sq];
-				a2[0] = a;
-				a2[1] = 0;
-				b2[0] = b + 48;
-				b2[1] = 0;
-				strcat(position, a2);
-				strcat(position, b2);
-				strcat(position, ",");
-				bb = bb & ~mask[sq];
-			}
-		}
-	}
-	int last = strlen(position);
-	if (last > 1)
-	{
-		position[last - 1] = ']';
-		strcat(position, "\n");
-	}
-	
-	//puzzles++;
-	//printf(" %d \n",puzzles);
-	//printf(" %s \n",position);
-
-	//if (puzzles < 1000)
-	{
-		fwrite(position, sizeof(char), sizeof(position), output_file);
-		fwrite("\n",1,1, output_file);
-	}
-
 }

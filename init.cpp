@@ -178,11 +178,11 @@ int piece_value[6] = { 100, 300, 300, 500, 900, 0 };
 
 int pawn_score[64] = {
 	  0,   0,   0,   0,   0,   0,   0,   0,
-	  0,   2,   4, -12, -12,   4,   2,   0,//-10 was -8
-	  0,   2,   4,   4,   6,   4,   2,   0,//d3 was 6 12/5/14
+	  0,   2,   4, -12, -12,   4,   2,   0,
+	  0,   2,   4,   4,   6,   4,   2,   0,
 	  0,   2,   4,   8,   8,   4,   2,   0,
 	  0,   2,   4,   8,   8,   4,   2,   0,
-	  4,   8,  10,  16,  16,  10,   8,   4,//a6 h6 was 4
+	  4,   8,  10,  16,  16,  10,   8,   4,
 	  0,  0,  0,   0,   0,  0,  0,   0,
 	  0,   0,   0,   0,   0,   0,   0,   0
 };
@@ -199,7 +199,7 @@ int knight_score[64] = {
 };
 
 int bishop_score[64] = {
-	-10, -10, -12, -10, -10, -12, -10, -10,//kb -14
+	-10, -10, -12, -10, -10, -12, -10, -10,
 	  0,   4,   4,   4,   4,   4,   6,   0,
 	  2,   4,   6,   6,   6,   6,   4,   2,
 	  2,   4,   6,   8,   8,   6,   4,   2,
@@ -287,25 +287,25 @@ int KingPawnLess[64] = {
 };
 
 int king_side2[64] = {
-0, 0,  0,  0, 0,  0, 0, 0,
-0, 0,  0,  0, 0,  0, 0, 0,
-0, 0,  0,  0, 0,-20,-10, 0,
-0, 0,  0,  0,-2,  2, 2, 2,
-0, 0,  0,  0, 0,  4, 8, 8,//was 4 not 8 on h-file
-0, 0,  0,  0, 0,  4, 8, 8,
-0, 0,  0,  0, 0,  4, 8, 8,
-0, 0,  0,  0, 0,  0, 0, 0
+	0, 0,  0,  0, 0,  0, 0, 0,
+	0, 0,  0,  0, 0,  0, 0, 0,
+	0, 0,  0,  0, 0,-20,-10, 0,
+	0, 0,  0,  0,-2,  2, 2, 2,
+	0, 0,  0,  0, 0,  4, 8, 8,
+	0, 0,  0,  0, 0,  4, 8, 8,
+	0, 0,  0,  0, 0,  4, 8, 8,
+	0, 0,  0,  0, 0,  0, 0, 0
 };
 
 int queen_side2[64] = {
-0, 0,  0,  0, 0,  0, 0, 0,
-0, 0,  0,  0, 0,  0, 0, 0,
-0,-10,-20, 0, 0,  0, 0, 0,
-2, 2,  2, -2, 0,  0, 0, 0,
-8, 8,  4,  0, 0,  0, 0, 0,
-8, 8,  4,  0, 0,  0, 0, 0,
-8, 8,  4,  0, 0,  0, 0, 0,
-0, 0,  0,  0, 0,  0, 0, 0
+	0, 0,  0,  0, 0,  0, 0, 0,
+	0, 0,  0,  0, 0,  0, 0, 0,
+	0,-10,-20, 0, 0,  0, 0, 0,
+	2, 2,  2, -2, 0,  0, 0, 0,
+	8, 8,  4,  0, 0,  0, 0, 0,
+	8, 8,  4,  0, 0,  0, 0, 0,
+	8, 8,  4,  0, 0,  0, 0, 0,
+	0, 0,  0,  0, 0,  0, 0, 0
 };
 
 int Flip[64] = {
@@ -409,25 +409,25 @@ int pawn_blocked[64] = {
 
 int isolated[64] =
 {
-0, 0, 0, 0, 0, 0, 0, 0,
-5, 10, 10, 15, 15, 10, 10, 5,
-6, 10, 10, 15, 15, 10, 10, 6,
-10, 10, 10, 12, 12, 10, 10, 10,
-10, 10, 10, 12, 12, 10, 10, 10,
-6, 10, 10, 15, 15, 10, 10, 6,
-5, 10, 10, 15, 15, 10, 10, 5,
-0, 0, 0, 0, 0, 0, 0, 0
+	0, 0, 0, 0, 0, 0, 0, 0,
+	5, 10, 10, 15, 15, 10, 10, 5,
+	6, 10, 10, 15, 15, 10, 10, 6,
+	10, 10, 10, 12, 12, 10, 10, 10,
+	10, 10, 10, 12, 12, 10, 10, 10,
+	6, 10, 10, 15, 15, 10, 10, 6,
+	5, 10, 10, 15, 15, 10, 10, 5,
+	0, 0, 0, 0, 0, 0, 0, 0
 };
 
 int kingloc[64] = {
-0, 0, 0, 2, 2, 1, 1, 1,
-0, 0, 0, 2, 2, 1, 1, 1,
-2, 2, 2, 2, 2, 2, 2, 2,
-2, 2, 2, 2, 2, 2, 2, 2,
-2, 2, 2, 2, 2, 2, 2, 2,
-2, 2, 2, 2, 2, 2, 2, 2,
-0, 0, 0, 2, 2, 1, 1, 1,
-0, 0, 0, 2, 2, 1, 1, 1
+	0, 0, 0, 2, 2, 1, 1, 1,
+	0, 0, 0, 2, 2, 1, 1, 1,
+	2, 2, 2, 2, 2, 2, 2, 2,
+	2, 2, 2, 2, 2, 2, 2, 2,
+	2, 2, 2, 2, 2, 2, 2, 2,
+	2, 2, 2, 2, 2, 2, 2, 2,
+	0, 0, 0, 2, 2, 1, 1, 1,
+	0, 0, 0, 2, 2, 1, 1, 1
 };
 
 int defended_pp[64] = {//25; 10 40 35 45 300
@@ -452,16 +452,6 @@ int adjacent_pp[64] = {
 	0, 0,  0,  0, 0,  0, 0, 0
 };
 
-/*
-more tables:
-isolated
-doubled
-backward
-rams
-supported passed
-etc
-*/
-
 int piece_mat[2];
 int pawn_mat[2];
 
@@ -476,7 +466,6 @@ int KingScore[2][64];
 int a_nodes;
 int b_nodes;
 int check_history[6][64];
-int sac_history[6][64];//
 
 int behind_queen;
 int king_defends;
@@ -554,26 +543,8 @@ void NewPosition()
 	bit_pieces[0][3] = bit_pieces[1][3] = 0;
 	bit_pieces[0][4] = bit_pieces[1][4] = 0;
 	bit_pieces[0][5] = bit_pieces[1][5] = 0;
-
 	bit_units[0] = bit_units[1] = 0;
 	bit_all = 0;
-/*
-	pieces[0][1][0] = pieces[0][1][1] = -1;
-	pieces[1][1][0] = pieces[1][1][1] = -1;
-	pieces[0][2][0] = pieces[0][2][1] = -1;
-	pieces[1][2][0] = pieces[1][2][1] = -1;
-	pieces[0][3][0] = pieces[0][3][1] = -1;
-	pieces[1][3][0] = pieces[1][3][1] = -1;//?
-*/
-	/*
-	int s1 = 0;
-	int s2 = 0;
-	passed_list[0] = 0;
-	passed_list[1] = 0;
-	s1 = EvalPawns(0, 1);
-	s2 = EvalPawns(1, 0);
-	AddPawnHash(s1, s2, passed_list[0], passed_list[1]);
-	*/
 	currentkey = GetKey();
 	currentlock = GetLock();
 	currentpawnkey = GetPawnKey();
@@ -710,17 +681,7 @@ void SetScores()
 		adjacent_passed[0][x] = defended_pp[x];
 		adjacent_passed[1][x] = defended_pp[Flip[x]];
 	}
-	/*
-	KnightTrapped[0][x] = knight_trapped[x];
-	BishopTrapped[0][x] = bishop_trapped[x];
-	RookTrapped[0][x] = rook_trapped[x];
-	QueenTrapped[0][x] = queen_trapped[x];
-	KnightTrapped[1][x] = knight_trapped[Flip[x]];
-	BishopTrapped[1][x] = bishop_trapped[Flip[x]];
-	RookTrapped[1][x] = rook_trapped[Flip[x]];
-	QueenTrapped[1][x] = queen_trapped[Flip[x]];
-	*/
-	ROOK_TRAPPED = PieceScore[0][5][G1] + 10;
+	//ROOK_TRAPPED = PieceScore[0][5][G1] + 10;
 }
 
 void SetKingPawnTable()
@@ -729,19 +690,19 @@ void SetKingPawnTable()
 	memset(QueenSide, 0, sizeof(QueenSide));
 	QueenSide[0][A2] = KingSide[0][H2] = QueenSide[1][A7] = KingSide[1][H7] = 25;
 	QueenSide[0][B2] = KingSide[0][G2] = QueenSide[1][B7] = KingSide[1][G7] = 25;
-	QueenSide[0][C2] = KingSide[0][F2] = QueenSide[1][C7] = KingSide[1][F7] = 15;//12
+	QueenSide[0][C2] = KingSide[0][F2] = QueenSide[1][C7] = KingSide[1][F7] = 15;
 
 	QueenSide[0][A3] = KingSide[0][H3] = QueenSide[1][A6] = KingSide[1][H6] = 25;
 	QueenSide[0][B3] = KingSide[0][G3] = QueenSide[1][B6] = KingSide[1][G6] = 15;
-	QueenSide[0][C3] = KingSide[0][F3] = QueenSide[1][C6] = KingSide[1][F6] = 10;//6; 21/8
+	QueenSide[0][C3] = KingSide[0][F3] = QueenSide[1][C6] = KingSide[1][F6] = 10;
 
 	QueenSide[0][A4] = KingSide[0][H4] = QueenSide[1][A5] = KingSide[1][H5] = 5;
 	QueenSide[0][B4] = KingSide[0][G4] = QueenSide[1][B5] = KingSide[1][G5] = 5;
 	QueenSide[0][C4] = KingSide[0][F4] = QueenSide[1][C5] = KingSide[1][F5] = 5;
 
-	QueenSide[0][A5] = KingSide[0][H5] = QueenSide[1][A4] = KingSide[1][H4] = 1;//2;
-	QueenSide[0][B5] = KingSide[0][G5] = QueenSide[1][B4] = KingSide[1][G4] = 1;//2;
-	QueenSide[0][C5] = KingSide[0][F5] = QueenSide[1][C4] = KingSide[1][F4] = 1;//2;
+	QueenSide[0][A5] = KingSide[0][H5] = QueenSide[1][A4] = KingSide[1][H4] = 1;
+	QueenSide[0][B5] = KingSide[0][G5] = QueenSide[1][B4] = KingSide[1][G4] = 1;
+	QueenSide[0][C5] = KingSide[0][F5] = QueenSide[1][C4] = KingSide[1][F4] = 1;
 
 	memset(KingSide2, 0, sizeof(KingSide2));
 	memset(QueenSide2, 0, sizeof(QueenSide2));
@@ -749,7 +710,7 @@ void SetKingPawnTable()
 	QueenSide2[0][B2] = KingSide2[0][G2] = QueenSide2[1][B7] = KingSide2[1][G7] = 10;
 	QueenSide2[0][C2] = KingSide2[0][F2] = QueenSide2[1][C7] = KingSide2[1][F7] = 6;
 
-	QueenSide2[0][A3] = KingSide2[0][H3] = QueenSide2[1][A6] = KingSide2[1][H6] = 10;//8 was 4
+	QueenSide2[0][A3] = KingSide2[0][H3] = QueenSide2[1][A6] = KingSide2[1][H6] = 10;
 	QueenSide2[0][B3] = KingSide2[0][G3] = QueenSide2[1][B6] = KingSide2[1][G6] = 10;
 	QueenSide2[0][C3] = KingSide2[0][F3] = QueenSide2[1][C6] = KingSide2[1][F6] = 6;
 
@@ -757,9 +718,9 @@ void SetKingPawnTable()
 	QueenSide2[0][B4] = KingSide2[0][G4] = QueenSide2[1][B5] = KingSide2[1][G5] = 10;
 	QueenSide2[0][C4] = KingSide2[0][F4] = QueenSide2[1][C5] = KingSide2[1][F5] = 6;
 
-	QueenSide2[0][A5] = KingSide2[0][H5] = QueenSide2[1][A4] = KingSide2[1][H4] = 5;//-2;
-	QueenSide2[0][B5] = KingSide2[0][G5] = QueenSide2[1][B4] = KingSide2[1][G4] = 5;//-4;
-	QueenSide2[0][C5] = KingSide2[0][F5] = QueenSide2[1][C4] = KingSide2[1][F4] = 2;//-8;
+	QueenSide2[0][A5] = KingSide2[0][H5] = QueenSide2[1][A4] = KingSide2[1][H4] = 5;
+	QueenSide2[0][B5] = KingSide2[0][G5] = QueenSide2[1][B4] = KingSide2[1][G4] = 5;
+	QueenSide2[0][C5] = KingSide2[0][F5] = QueenSide2[1][C4] = KingSide2[1][F4] = 2;
 
 	QueenSide2[0][A6] = KingSide2[0][H6] = QueenSide2[1][A3] = KingSide2[1][H3] = 0;
 	QueenSide2[0][B6] = KingSide2[0][G6] = QueenSide2[1][B3] = KingSide2[1][G3] = -10;
@@ -781,20 +742,3 @@ void SetKingPawnTable()
 	}
 }
 
-void SetReductions()
-{
-	int best = 0;
-	for (int hd = 1; hd < 64; ++hd) for (int mc = 1; mc < 64; ++mc)
-	{
-		double    pvRed = 0.00 + log(double(hd)) * log(double(mc)) / 3.00;
-		double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
-		reduce[1][hd][mc] = int(pvRed >= 1.0 ? pvRed + 0.5 : 0);
-		reduce[0][hd][mc] = int(nonPVRed >= 1.0 ? nonPVRed + 0.5 : 0);
-
-
-		if (reduce[0][hd][mc] >= 2)
-			reduce[0][hd][mc] += 1;
-		if (reduce[0][hd][mc] > best)
-			best = reduce[0][hd][mc];
-	}
-}

@@ -100,7 +100,6 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="see.cpp" />
     <ClCompile Include="search.cpp" />
-    <ClCompile Include="simplicity.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="update.cpp" />
   </ItemGroup>

@@ -30,7 +30,7 @@ bool CheckAttack(const int s, const int sq)
 {
 	if (bit_knightmoves[sq] & bit_pieces[s][1])
 		return true;
-	if (bit_pawndefends[s][sq] & bit_pieces[s][0])//7/4/13
+	if (bit_pawndefends[s][sq] & bit_pieces[s][0])
 		return true;
 	BITBOARD b1 = bit_bishopmoves[sq] & (bit_pieces[s][2] | bit_pieces[s][4]);
 	b1 |= (bit_rookmoves[sq] & (bit_pieces[s][3] | bit_pieces[s][4]));
@@ -90,4 +90,29 @@ bool LineAttack2(const int s, const int sq, const int pinned, const int dest)
 		b1 &= not_mask[i];
 	}
 	return false;
+}
+
+int Disco(const int s, const int sq)
+{
+	BITBOARD b1 = bit_bishopmoves[sq] & (bit_pieces[s][2] | bit_pieces[s][4]);
+	b1 |= (bit_rookmoves[sq] & (bit_pieces[s][3] | bit_pieces[s][4]));
+	BITBOARD b2;
+
+	while (b1)
+	{
+		int i = NextBit(b1);
+		if (!(bit_between[i][sq] & bit_units[!s]))
+		{
+			b2 = bit_between[i][sq] & bit_units[s];
+			if ((b2 & b2 - 1) == 0 && 
+				!(bit_between[i][sq] & bit_pieces[s][0] && mask_cols[i]==mask_cols[sq]))
+			{
+				//Alg(i,sq);
+				//z();
+				return NextBit(b2);
+			}
+		}
+		b1 &= not_mask[i];
+	}
+	return 0;
 }

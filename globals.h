@@ -210,12 +210,12 @@ typedef struct
 
 extern move_data move_list[GEN_STACK];
 
-/* gen.cpp */
-void gen(const int);
-void gen_ep(const int from, const int to);
-void gen_promote(const int from, const int to);
+/* Gen.cpp */
+void Gen(const int);
+void GenEp2(const int from, const int to);
+void GenPromote(const int from, const int to);
 bool MakeMove(const int from, const int to, const int flags);
-void takeback();
+void UnMakeMove();
 
 /* book.cpp */
 void open_book();
@@ -322,7 +322,7 @@ extern BITBOARD bit_pawncaptures[2][64];
 extern BITBOARD bit_pawndefends[2][64];
 extern BITBOARD bit_left[2][64];
 extern BITBOARD bit_right[2][64];
-extern BITBOARD bit_pawnmoves[2][64];
+//extern BITBOARD bit_pawnmoves[2][64];
 extern BITBOARD bit_knightmoves[64];
 extern BITBOARD bit_bishopmoves[64];
 extern BITBOARD bit_rookmoves[64];
@@ -626,9 +626,7 @@ int FirstOne(BITBOARD arg1);
 
 int OpeningEval(int, int);
 
-int EndgameTacticalScore(const int s, const int xs);
-
-int PawnEndings(const int, const int);
+int PassedPawnScore(const int s, const int xs);
 
 void SetPawnFen();
 
@@ -643,15 +641,15 @@ BITBOARD GetHashPassed0();
 BITBOARD GetHashPassed1();
 
 BITBOARD GetHashPawnAttacks(const int s);
-void AddPawnAttackHash(const int s, const int value);
+void AddPawnAttackHash(const int s, const BITBOARD value);
 
 int GetHashBlocked(const int s);
 int GetHashOpposed(const int s);
 int GetHashPawnEnding(const int s);
 
 void genNon(const int s, const int xs);
-void gen_caps(const int, const int);
-void gen_caps2(const int);
+void GenCapsChecks(const int, const int);
+void GenCaps(const int);
 void gen_caps3();
 int gen_recaptures(const int alpha, const int);
 
@@ -686,9 +684,10 @@ int DoubleAttack(const int s, const int xs, const int diff);
 int MakeThreat(const int s, const int sx, const int threat_start, const int threat_dest);
 int StrongThreat(const int s, const int xs, const int);
 
-int Blunder(const int, const int, const int);
+int Blunder(const int, const int);
+int BlunderCheck(const int, const int);
 int BlunderThreat(const int, const int, const int, const int, const int, const int);
-int BlunderOne(const int);
+int BlunderCapture(const int cv, const int to, const int flags);
 
 extern int PlyMove[MAX_PLY];
 extern int PlyType[MAX_PLY];
@@ -710,7 +709,7 @@ int SafeKingMoves(const int, const int);
 void TestEval();
 void KeyTest(int n);
 
-void MoveAttacked(const int sq, const int, const int ply);
+void MoveAttacked(const int xs,const int sq, const int, const int ply);
 
 int BlunderCapture();
 
