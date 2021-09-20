@@ -288,7 +288,7 @@ void ShowMoves(int p)
 
 int Debug(const int p)
 {
-	return 0;
+	//return 0;
 	//*
 	for (int x = 0; x < 64; x++)
 	{

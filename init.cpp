@@ -675,13 +675,12 @@ void SetScores()
 		PawnBlocked[0][x] = pawn_blocked[x];
 		PawnBlocked[1][x] = pawn_blocked[Flip[x]];
 
-		defended_passed[0][x] = defended_pp[x];
-		defended_passed[1][x] = defended_pp[Flip[x]];
+		defended_passed[1][x] = defended_pp[x];
+		defended_passed[0][x] = defended_pp[Flip[x]];
 		
-		adjacent_passed[0][x] = defended_pp[x];
-		adjacent_passed[1][x] = defended_pp[Flip[x]];
+		adjacent_passed[1][x] = adjacent_pp[x];
+		adjacent_passed[0][x] = adjacent_pp[Flip[x]];
 	}
-	//ROOK_TRAPPED = PieceScore[0][5][G1] + 10;
 }
 
 void SetKingPawnTable()

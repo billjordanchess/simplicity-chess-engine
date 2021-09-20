@@ -107,8 +107,6 @@ int Disco(const int s, const int sq)
 			if ((b2 & b2 - 1) == 0 && 
 				!(bit_between[i][sq] & bit_pieces[s][0] && mask_cols[i]==mask_cols[sq]))
 			{
-				//Alg(i,sq);
-				//z();
 				return NextBit(b2);
 			}
 		}

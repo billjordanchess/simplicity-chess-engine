@@ -279,7 +279,7 @@ int BestCapture2(const int s, const int xs, BITBOARD bu)
 			b2 &= not_mask[sq];
 			if (!(bit_between[i][sq] & bit_all))
 			{
-				bu &= not_mask[sq];//11/5/14
+				bu &= not_mask[sq];
 				if (piece_value[b[sq]] > best)
 					if (Attack(xs, sq) == 0)
 					{
@@ -872,7 +872,7 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 		}
 		else
 		{
-			return GetScore2(s,xs,sq);
+			;// return GetScore2(s, xs, sq);
 		}
 	}
 	int x;
@@ -892,7 +892,7 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 			}
 			else
 			{
-				return GetScore2(s,xs,sq);
+				;// return GetScore2(s, xs, sq);
 			}
 		}
 	}
@@ -914,7 +914,7 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 				}
 				else
 				{
-					return GetScore2(s,xs,sq);
+					;// return GetScore2(s, xs, sq);
 				}
 			}
 		}
@@ -937,7 +937,7 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 				}
 				else
 				{
-					return GetScore2(s,xs,sq);
+					;// return GetScore2(s, xs, sq);
 				}
 			}
 		}
@@ -960,7 +960,7 @@ int BestCapture(const int s, const int xs, BITBOARD bu)
 				}
 				else
 				{
-					return GetScore2(s,xs,sq);
+					;// return GetScore2(s, xs, sq);
 				}
 			}
 		}

@@ -62,6 +62,8 @@ void CheckBishop(const int from, const int to);
 void CheckRook(const int from, const int to);
 void CheckQueen(const int from, const int to);
 
+void AddEP(const int from, const int to);
+
 BITBOARD SetTargets(const int s, const int v);
 
 move_data* g;
@@ -240,7 +242,6 @@ void GenCapsChecks(const int diff, const int depth)
 	int i;
 	int sq;
 	BITBOARD b1, b2;
-	epflag = 0;
 	
 	b1 = bit_pieces[side][0] & mask_ranks[side][6];
 
@@ -287,7 +288,7 @@ void GenCapsChecks(const int diff, const int depth)
 		return;
 	}
 
-	int king = pieces[xside][5][0];//14
+	int king = pieces[xside][5][0];
 
 	if (depth == 0)
 	{
@@ -325,7 +326,7 @@ void GenCapsChecks(const int diff, const int depth)
 		b1 &= not_mask[i];
 		if (rank[side][i] < rank[side][king] && abs(col[i] - col[king]) == 1 && b[pawnplus[side][i]] == 6)
 		{
-			CheckPawn(i, pawnplus[side][i]);//13/5/17
+			CheckPawn(i, pawnplus[side][i]);
 		}
 	}
 	BITBOARD bb = ~bu & ~bit_units[side];
@@ -689,7 +690,7 @@ int SafeKingMoves(const int s, const int xs)
 	int sq;
 	int	i = pieces[s][5][0];
 	BITBOARD b1 = bit_kingmoves[i] & ~bit_units[s];
-	while (b1)//filter out defended
+	while (b1)
 	{
 		sq = NextBit(b1);
 		b1 &= not_mask[sq];
@@ -701,26 +702,23 @@ int SafeKingMoves(const int s, const int xs)
 
 void GenEP()
 {
-	if(epflag && mask[epflag] & bit_pieces[xside][0])
+	int ep = game_list[hply - 1].to;
+
+	if (b[ep] == 0 && abs(game_list[hply - 1].from - ep) == 16)
 	{
-		int	sq = pawnplus[side][epflag];
-
-		if (bit_left[xside][sq] & bit_pieces[side][0])
-		{
-			GenEp2(pawnleft[xside][sq], sq);
-		}
-
-		if (bit_right[xside][sq] & bit_pieces[side][0])
-		{
-			GenEp2(pawnright[xside][sq], sq);
-		}
+		if (first_move[ply - 1] == first_move[ply])
+			return;
+		if (col[ep] > 0 && mask[ep - 1] & bit_pieces[side][P])
+			AddEP(ep - 1, pawnplus[side][ep]);
+		if (col[ep] < 7 && mask[ep + 1] & bit_pieces[side][P])
+			AddEP(ep + 1, pawnplus[side][ep]);
 	}
 }
 
-void GenEp2(const int from, const int to)
+void AddEP(const int from, const int to)
 {
 	g = &move_list[mc++];
-	g->flags = CAPTURE | EP;
+	g->flags = 0;
 	g->from = from;
 	g->to = to;
 	g->score = px[0];
@@ -943,7 +941,7 @@ void CheckQueen(const int from, const int to)
 
 void GenPromote(const int from, const int to)
 {
-	if (ply < 1 && currentmax < 2)// && side != computer_side)
+	if (ply < 1 && currentmax < 2)
 	{
 		for (int i = KNIGHT; i <= QUEEN; ++i)
 		{
@@ -954,7 +952,6 @@ void GenPromote(const int from, const int to)
 			g->to = to;
 			//g->promote = i;
 			g->score = CAPTURE_SCORE + (i * 10);
-			g->flags = PROMOTE;
 
 			if (i == 4)//other typs could be added
 				if (bit_queenmoves[to] & bit_pieces[xside][5] &&

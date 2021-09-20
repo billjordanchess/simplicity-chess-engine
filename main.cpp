@@ -54,8 +54,8 @@ extern int hash_start, hash_dest;
 
 int main()
 {
-	printf("Simplicity Chess Engine no null\n");
-	printf("Version 1.1, 16/9/21\n");
+	printf("Simplicity Chess Engine\n");
+	printf("Version 1.1, 20/9/21\n");
 	printf("Bill Jordan 2021\n");
 	printf("FIDE Master and 2021 state champion.\n");
 	printf("I have published a number of chess books\n");
@@ -84,8 +84,6 @@ int main()
 	SetBits();
 	NewPosition();
 	SetUp();
-
-	//ConvertFen("c:\\diagrams\\pos.txt");
 
 	check = Attack(xside, pieces[side][5][0]);
 	Gen(check);

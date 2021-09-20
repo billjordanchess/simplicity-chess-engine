@@ -66,8 +66,6 @@ void RemovePiece(const int s, const int p, const int sq)
 	table_score[s] -= PieceScore[s][p][sq];	
 
 	total[s][p]--;
-	//if(pieces[s][p][0] == sq)
-	//	pieces[s][p][0] = pieces[s][p][1];
 	if (pieces[s][p][total[s][p]] != sq)
 	{
 		for (int x = 0; x < total[s][p]; x++)
@@ -105,10 +103,6 @@ bool MakeMove(const int from, const int to, const int flags)
 {
 	if (b[from] == 5 && abs(from - to) == 2)
 	{
-		if (!(flags & CASTLE))
-		{
-			//printf("1");
-		}
 		UpdatePiece(side, ROOK, castle_start[to], castle_dest[to]);
 		KingScore[side][squares[side][E1]] = -40;
 		if (col[to] == 6)
@@ -132,8 +126,6 @@ bool MakeMove(const int from, const int to, const int flags)
 
 	fifty++;
 
-	epflag = 0;
-
 	if (b[from] == 0)
 	{
 		fifty = 0;
@@ -144,13 +136,6 @@ bool MakeMove(const int from, const int to, const int flags)
 		if (b[to] < 6)
 		{
 			RemovePiece(xside, b[to], to);
-		}
-		else
-		{
-			if (abs(to - from) == 16 && bit_adjacent[to] & bit_pieces[xside][0])
-			{
-				epflag = to;
-			}
 		}
 		if (rank[side][to] == 7)
 		{
@@ -220,7 +205,7 @@ void UnMakeMove()
 			BeforeCastle();
 		}
 	}
-	if (b[m->from] == 0 && m->capture == EMPTY && col[m->from] != col[m->to])//ep
+	if (b[m->from] == 0 && m->capture == EMPTY && col[m->from] != col[m->to])
 	{
 		AddPiece(xside, 0, pawnplus[xside][m->to]);
 	}	
@@ -232,7 +217,7 @@ int MakeCapture(const int from, const int to, const int flags)
 	game_list[hply].from = from;
 	game_list[hply].to = to;
 	game_list[hply].capture = b[to];
-	game_list[hply].fifty = 0;//
+	game_list[hply].fifty = 0;
 	game_list[hply].hash = currentkey;
 	game_list[hply].lock = currentlock;
 	++ply;
@@ -295,7 +280,7 @@ void UnMakeCapture()
 	{
 		AddPiece(xside, h->capture, h->to);
 	}
-	if (b[h->from] == 0 && h->capture == EMPTY && col[h->from] != col[h->to])//ep
+	if (b[h->from] == 0 && h->capture == EMPTY && col[h->from] != col[h->to])
 	{
 		AddPiece(xside, 0, pawnplus[xside][h->to]);
 	}

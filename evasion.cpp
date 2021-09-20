@@ -42,6 +42,7 @@ void Evasion()
 		n = game_list[hply - 1].to;
 	else
 		n = GetChecker(xside, side, k);
+
 	GenEP();
 	if (bit_left[xside][n] & bit_pieces[side][0])
 	{

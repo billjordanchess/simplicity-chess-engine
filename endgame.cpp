@@ -141,7 +141,7 @@ int EvalEndgame()
 	}
 	if (pawn_mat[0] == 0 && abs(piece_mat[0] - piece_mat[1]) < 500)
 		score2[0] -= (piece_mat[0] >> 1);
-	if (pawn_mat[1] == 0 && abs(piece_mat[0] - piece_mat[1]) < 500)
+	else if (pawn_mat[1] == 0 && abs(piece_mat[0] - piece_mat[1]) < 500)
 		score2[1] -= (piece_mat[1] >> 1);
 
 	if (total[0][2] == 1 && total[1][2] == 1)
@@ -156,54 +156,36 @@ int EvalEndgame()
 		score[0] += score2[0];
 		score[1] += score2[1];
 	}
-	//dynamic score
-	if (passed_list[side])
-		score[side] += PassedPawnScore(side, xside);
 
-	if (passed_list[xside])
-		score[xside] += PassedPawnScore2(xside, side);
-
-	if (pawn_mat[1] == 100)
-	{
-		int pawn = pawnplus[1][NextBit(bit_pieces[1][0])];
-
-		score[0] -= pawn_difference[pieces[0][5][0]][pawn];
-		score[1] -= pawn_difference[pieces[0][5][0]][pawn];
-	}
-	if (pawn_mat[0] == 100) 
-	{
-		int pawn = pawnplus[0][NextBit(bit_pieces[1][0])];
-
-		score[0] -= pawn_difference[pieces[0][5][0]][pawn];
-		score[1] -= pawn_difference[pieces[1][5][0]][pawn];
-	}
-
-	if (pawn_mat[0] == 0 && piece_mat[0] < 600 && pawn_mat[1] == 100 &&
-		(piece_mat[1] < 600 || piece_mat[1] == 900)
-		&& DrawnEnding(0, 1) && ply>1)
-	{
-		drawn = 1;
-		return 0;
-	}
-	else
-		if (pawn_mat[1] == 0 && piece_mat[1] < 600 && pawn_mat[0] == 100 &&
-			(piece_mat[0] < 600 || piece_mat[0] == 900)
-			&& DrawnEnding(1, 0) && ply>1)
+	int x, sq, pawn;
+	for (int s = 0; s < 2; s++)
+	{	
+		if (passed_list[s])
+			score[s] += PassedPawnScore(s, !s);
+		if (pawn_mat[s] == 0 && piece_mat[s] < 600 && pawn_mat[!s] == 100 &&
+			(piece_mat[!s] < 600 || piece_mat[!s] == 900)
+			&& DrawnEnding(s, !s) && ply>1)
 		{
 			drawn = 1;
 			return 0;
 		}
+		if (pawn_mat[s] == 100)
+		{
+		    pawn = pawnplus[s][NextBit(bit_pieces[!s][0])];
 
-	int x, sq;
-	for (x = 0; x < total[0][3]; x++)
-	{
-		sq = pieces[0][3][x];
-		score[0] += RookMoveCount(sq);
-	}
-	for (x = 0; x < total[1][3]; x++)
-	{
-		sq = pieces[1][3][x];
-		score[1] += RookMoveCount(sq);
+			score[0] -= pawn_difference[pieces[0][5][0]][pawn];
+			score[1] -= pawn_difference[pieces[1][5][0]][pawn];
+		}
+		else if (pawn_mat[s] == 0 && piece_mat[s]==300)//
+		{
+			if (score[s] >= 0)
+				return 0;
+		}
+		for (x = 0; x < total[s][3]; x++)
+		{
+			sq = pieces[s][3][x]; 
+			score[s] += RookMoveCount(sq);
+		}
 	}
 	return score[side] - score[xside];
 }

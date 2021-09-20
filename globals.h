@@ -10,8 +10,6 @@
 #include <time.h>
 #include <assert.h>
 
-extern int epflag;
-
 extern unsigned int CAPTURE;
 extern unsigned int INCHECK;
 
