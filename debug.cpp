@@ -121,11 +121,16 @@ void ShowAll2()
 
 	for (int z = ply; z > 0; z--)
 	{
-		if (game_list[hply - z].capture == 6)
-			Alg(game_list[hply - z].from, game_list[hply - z].to);
+		if (z>1 && first_move[z-1] == first_move[z])
+			printf(" NULL ");
 		else
-			Alg2(game_list[hply - z].from, game_list[hply - z].to);
-		printf(" ");
+		{
+			if (game_list[hply - z].capture == 6)
+				Alg(game_list[hply - z].from, game_list[hply - z].to);
+			else
+				Alg2(game_list[hply - z].from, game_list[hply - z].to);
+			printf(" ");
+		}
 	}
 	printf("\n  order ");
 	for (int z = 1; z <= ply; z++)
@@ -288,7 +293,6 @@ void ShowMoves(int p)
 
 int Debug(const int p)
 {
-	//return 0;
 	//*
 	for (int x = 0; x < 64; x++)
 	{
@@ -431,8 +435,6 @@ int GetBest(int ply)
 	{
 		if (done[i] == 1) continue;
 		g = &move_list[first_move[ply] + i];
-		if (g->from == 0 && g->to == 0)
-			continue;//
 		if (g->score > bestscore)
 		{
 			bestscore = g->score;
@@ -461,4 +463,54 @@ int GetBest2(int ply)
 	//*/
 }
 
+void ShowAllEval(int ply)
+{
+	return;
+	move_data* g;
+	print_board();
+	memset(done, 0, sizeof(done));
+
+	printf(" ply ");
+	printf("%d", ply);
+	printf(" current max ");
+	printf("%d", currentmax);
+	printf(" currentdepth %d", GetCurrentDepth());
+	printf(" nodes ");
+	printf("%d", nodes);
+	printf(" side ");
+	printf("%d", side);
+	printf(" xside ");
+	printf("%d", xside);
+	printf("\n");
+	
+	printf("\n");
+
+	int j;
+
+	printf(" non-caps \n");
+
+	for (int i = first_move[ply]; i < first_move[ply + 1]; i++)
+	{
+		if (MakeMove(move_list[i].from, move_list[i].to, move_list[i].flags))
+		{
+			//move_list[i].score = quiesce(-10000, 10000, 0);
+			move_list[i].score = eval(-10000, 10000);
+			UnMakeMove();
+		}
+	}
+	for (int i = first_move[ply]; i < first_move[ply + 1]; i++)
+	{
+		j = GetBest(ply);
+		{
+			g = &move_list[j];
+			printf("%s", MoveString(move_list[j].from, move_list[j].to, 0));
+			printf(" ");
+			printf(" eval ");
+			printf("%d", g->score);
+			printf("\n");
+		}
+	}
+	printf("\n");
+	_getch();
+}
 

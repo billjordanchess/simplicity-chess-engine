@@ -16,10 +16,6 @@ unsigned int PAWNMOVE = (1 << 12);
 unsigned int COUNTER = (1 << 13);
 unsigned int EP = (1 << 14);
 
-int nextq[] = { 1,2,3,4,5,6,7,8,0 };
-int nextr[] = { 2,4,6,8,0 };
-int nextb[] = { 1,3,5,7,0 };
-
 const BITBOARD m0 = ~mask_ranks[0][6];
 const BITBOARD m1 = ~mask_ranks[1][6];
 
@@ -48,19 +44,15 @@ void CapKing(const int from, const int to);
 
 void Recap(const int from, const int to);
 
-void PushPawn(const int from, const int to);
-void PushKnight(const int from, const int to);
-void PushBishop(const int from, const int to);
-void PushRook(const int from, const int to);
-void PushQueen(const int from, const int to);
-void PushKing(const int from, const int to);
+void AddPawn(const int from, const int to);
+void AddKnight(const int from, const int to);
+void AddBishop(const int from, const int to);
+void AddRook(const int from, const int to);
+void AddQueen(const int from, const int to);
+void AddKing(const int from, const int to);
 void AddCastle(const int from, const int to);
 
-void CheckPawn(const int from, const int to);
-void CheckKnight(const int from, const int to);
-void CheckBishop(const int from, const int to);
-void CheckRook(const int from, const int to);
-void CheckQueen(const int from, const int to);
+void AddCheck(const int from, const int to, const int p);
 
 void AddEP(const int from, const int to);
 
@@ -69,43 +61,11 @@ BITBOARD SetTargets(const int s, const int v);
 move_data* g;
 game* h;
 
-int GetChecker(const int s, const int xs, const int sq)
-{
-	if (bit_knightmoves[sq] & bit_pieces[s][1])
-		return NextBit(bit_knightmoves[sq] & bit_pieces[s][1]);
-
-	BITBOARD b1 = bit_bishopmoves[sq] & (bit_pieces[s][2] | bit_pieces[s][4]);
-	while (b1)
-	{
-		int i = NextBit(b1);
-		if (!(bit_between[i][sq] & bit_all))
-			return i;
-		b1 &= not_mask[i];
-	}
-	b1 = bit_rookmoves[sq] & (bit_pieces[s][3] | bit_pieces[s][4]);
-	while (b1)
-	{
-		int i = NextBit(b1);
-		if (!(bit_between[i][sq] & bit_all))
-			return i;
-		b1 &= not_mask[i];
-	}
-	if (bit_left[xs][sq] & bit_pieces[s][0])
-	{
-		return pawnleft[xs][sq];
-	}
-	if (bit_right[xs][sq] & bit_pieces[s][0])
-	{
-		return pawnright[xs][sq];
-	}
-	return -1;
-}
-
 void Gen(const int c)
 {
-	if(c>0)
+	if(c>-1)
 	{
-		Evasion();
+		Evasion(c);
 		return;
 	}
 	first_move[ply + 1] = first_move[ply];
@@ -168,10 +128,10 @@ void Gen(const int c)
 	{
 		i = NextBit(bp);
 		bp &= not_mask[i];
-		PushPawn(i, pawnplus[side][i]);
+		AddPawn(i, pawnplus[side][i]);
 		if (rank[side][i] == 1 && b[pawndouble[side][i]] == 6)
 		{
-			PushPawn(i, pawndouble[side][i]);
+			AddPawn(i, pawndouble[side][i]);
 		}
 	}
 
@@ -196,7 +156,7 @@ void Gen(const int c)
 		{
 			n = knightmoves[i][j];
 			if (b[n] == 6)
-				PushKnight(i, n);
+				AddKnight(i, n);
 			else if (mask[n] & bit_units[xside])
 				CapKnight(i, n);
 		}
@@ -230,7 +190,7 @@ void Gen(const int c)
 			}
 			continue;
 		}
-		PushKing(i, n);
+		AddKing(i, n);
 	}
 	first_move[ply + 1] = mc;
 }
@@ -239,6 +199,7 @@ void GenCapsChecks(const int diff, const int depth)
 {
 	first_move[ply + 1] = first_move[ply];
 	mc = first_move[ply];
+
 	int i;
 	int sq;
 	BITBOARD b1, b2;
@@ -282,11 +243,6 @@ void GenCapsChecks(const int diff, const int depth)
 			}
 		}
 	}
-	if (bu == 0)
-	{
-		first_move[ply + 1] = mc;
-		return;
-	}
 
 	int king = pieces[xside][5][0];
 
@@ -297,13 +253,13 @@ void GenCapsChecks(const int diff, const int depth)
 
 	if (side == 0)
 	{
-		b1 = bit_pieces[0][0] & ((bit_units[1] & not_h_file) >> 7) & m0;
-		b2 = bit_pieces[0][0] & ((bit_units[1] & not_a_file) >> 9) & m0;
+		b1 = bit_pieces[0][0] & ((bu & not_h_file) >> 7) & m0;
+		b2 = bit_pieces[0][0] & ((bu & not_a_file) >> 9) & m0;
 	}
 	else
 	{
-		b1 = bit_pieces[1][0] & ((bit_units[0] & not_h_file) << 9) & m1;
-		b2 = bit_pieces[1][0] & ((bit_units[0] & not_a_file) << 7) & m1;
+		b1 = bit_pieces[1][0] & ((bu & not_h_file) << 9) & m1;
+		b2 = bit_pieces[1][0] & ((bu & not_a_file) << 7) & m1;
 	}
 
 	while (b1)
@@ -319,6 +275,20 @@ void GenCapsChecks(const int diff, const int depth)
 		CapPawn(i, pawnright[side][i]);
 	}
 
+	b1 = bit_pawndefends[side][king] & bit_units[xside];
+	while (b1)
+	{
+		i = NextBit(b1);
+		b1 &= not_mask[i];
+		b2 = bit_pawndefends[side][i] & bit_pieces[side][0];
+		while(b2)
+		{
+			sq = NextBit(b2);
+			b2 &= not_mask[sq];
+			AddCheck(sq, i,0);
+		}
+	}
+
 	b1 = bit_knightmoves[king] & bit_pieces[side][0];
 	while (b1)
 	{
@@ -326,7 +296,7 @@ void GenCapsChecks(const int diff, const int depth)
 		b1 &= not_mask[i];
 		if (rank[side][i] < rank[side][king] && abs(col[i] - col[king]) == 1 && b[pawnplus[side][i]] == 6)
 		{
-			CheckPawn(i, pawnplus[side][i]);
+			AddCheck(i, pawnplus[side][i],0);
 		}
 	}
 	BITBOARD bb = ~bu & ~bit_units[side];
@@ -347,7 +317,7 @@ void GenCapsChecks(const int diff, const int depth)
 		{
 			sq = NextBit(b2);
 			b2 &= not_mask[sq];
-			CheckKnight(i, sq);
+			AddCheck(i, sq,1);
 		}
 	}
 	//start line pieces
@@ -369,7 +339,7 @@ void GenCapsChecks(const int diff, const int depth)
 		{
 			if (!((bit_between[i][sq] | bit_between[sq][king]) & bit_all))
 			{
-				CheckBishop(i, sq);
+				AddCheck(i, sq,2);
 			}
 		}
 		sq = r_check[i][king];
@@ -377,7 +347,7 @@ void GenCapsChecks(const int diff, const int depth)
 		{
 			if (!((bit_between[i][sq] | bit_between[sq][king]) & bit_all))
 			{
-				CheckBishop(i, sq);
+				AddCheck(i, sq,2);
 			}
 		}
 	}
@@ -401,7 +371,7 @@ void GenCapsChecks(const int diff, const int depth)
 		{
 			if (!((bit_between[i][sq] | bit_between[sq][king]) & bit_all))
 			{
-				CheckRook(i, sq);
+				AddCheck(i, sq,3);
 			}
 		}
 		sq = v_check[i][king];
@@ -409,7 +379,7 @@ void GenCapsChecks(const int diff, const int depth)
 		{
 			if (!((bit_between[i][sq] | bit_between[sq][king]) & bit_all))
 			{
-				CheckRook(i, sq);
+				AddCheck(i, sq,3);
 			}
 		}
 	}
@@ -434,7 +404,7 @@ void GenCapsChecks(const int diff, const int depth)
 		{
 			if (mask[sq] & bb && !((bit_between[i][sq] | bit_between[sq][king]) & bit_all))
 			{
-				CheckQueen(i, sq);
+				AddCheck(i, sq,4);
 			}
 			sq = q_check[i][king][z1++];
 		}
@@ -481,17 +451,17 @@ void GenCaps(const int diff)
 	}
 	int i;
 	int sq;
-	BITBOARD b1, b2;
+	BITBOARD b1, b2;//146840 greek gift -> 143076 ->100472 with checks 105929
 
 	if (side == 0)
 	{
-		b1 = bit_pieces[0][0] & ((bit_units[1] & not_h_file) >> 7);
-		b2 = bit_pieces[0][0] & ((bit_units[1] & not_a_file) >> 9);
+		b1 = bit_pieces[0][0] & ((bu & not_h_file) >> 7);
+		b2 = bit_pieces[0][0] & ((bu & not_a_file) >> 9);
 	}
 	else
 	{
-		b1 = bit_pieces[1][0] & ((bit_units[0] & not_h_file) << 9);
-		b2 = bit_pieces[1][0] & ((bit_units[0] & not_a_file) << 7);
+		b1 = bit_pieces[1][0] & ((bu & not_h_file) << 9);
+		b2 = bit_pieces[1][0] & ((bu & not_a_file) << 7);
 	}
 
 	while (b1)
@@ -588,14 +558,13 @@ int gen_recaptures(const int diff, const int dest)
 		return 0;
 	}
 
-	int i;
 	h = &game_list[hply - 1];
 
 	if (bit_pawncaptures[xside][dest] & bit_pieces[side][0])
 	{
 		if (bit_pieces[side][0] & bit_left[xside][dest] && !LineAttack1(xside, pieces[side][5][0], pawnleft[xside][dest]))
 		{
-			if ((piece_value[h->capture] + 100 < piece_value[b[dest]] || rank[side][dest] == 0) && !(h->flags & INCHECK))
+			if ((piece_value[h->capture] + 100 < piece_value[b[dest]]) && !(h->flags & INCHECK))
 			{
 				return 2;
 			}
@@ -613,67 +582,88 @@ int gen_recaptures(const int diff, const int dest)
 		}
 	}
 
-	BITBOARD b1 = bit_knightmoves[dest] & bit_pieces[side][1];
-	while (b1)
+	int i;
+	if(bit_knightmoves[dest] & bit_pieces[side][1])
+	for (int x = 0; x < total[side][1]; x++)
 	{
-		i = NextBit(b1);
-		b1 &= not_mask[i];
-		if (!LineAttack1(xside, pieces[side][5][0], i))
+		i = pieces[side][1][x];
+		if (bit_knightmoves[dest] & mask[i])
 		{
-			if (piece_value[h->capture] + 300 < piece_value[b[dest]] && !(h->flags & INCHECK))
+			if (!LineAttack1(xside, pieces[side][5][0], i))
 			{
-				return 2;
+				if (piece_value[h->capture] + 300 < piece_value[b[dest]] && !(h->flags & INCHECK))
+				{
+					return 2;
+				}
+				//if (b[dest] == 0 && bit_pawncaptures[side][dest] & bit_pieces[xside][0])
+				{
+					//continue;
+				}
+				Recap(i, dest);
+				return 1;
 			}
-			Recap(i, dest);
-			return 1;
 		}
 	}
 
-	b1 = bit_bishopmoves[dest] & bit_pieces[side][2];
-	while (b1)
+	if(bit_bishopmoves[dest] & bit_pieces[side][2])
+	for (int x = 0; x < total[side][2]; x++)
 	{
-		i = NextBit(b1);
-		b1 &= not_mask[i];
-		if (!(bit_between[dest][i] & bit_all) && !(LineAttack2(xside, pieces[side][5][0], i, dest)))
+		i = pieces[side][2][x];
+		if (bit_bishopmoves[dest] & mask[i])
 		{
-			if (piece_value[h->capture] + 300 < piece_value[b[dest]] && !(h->flags & INCHECK))
+			if (!(bit_between[dest][i] & bit_all) && !(LineAttack2(xside, pieces[side][5][0], i, dest)))
 			{
-				return 2;
+				if (piece_value[h->capture] + 300 < piece_value[b[dest]] && !(h->flags & INCHECK))
+				{
+					return 2;
+				}
+				//if (b[dest] == 0 && bit_pawncaptures[side][dest] & bit_pieces[xside][0])
+				{
+					//continue;
+				}
+				Recap(i, dest);
+				return 1;
 			}
-			Recap(i, dest);
-			return 1;
 		}
 	}
 
-	b1 = bit_rookmoves[dest] & bit_pieces[side][3];
-	while (b1)
+	if(bit_rookmoves[dest] & bit_pieces[side][3])
+	for (int x = 0; x < total[side][3]; x++)
 	{
-		i = NextBit(b1);
-		b1 &= not_mask[i];
-		if (!(bit_between[dest][i] & bit_all) && !(LineAttack2(xside, pieces[side][5][0], i, dest)))
+		i = pieces[side][3][x];
+		if (bit_rookmoves[dest] & mask[i])
 		{
-			if (piece_value[h->capture] + 500 < piece_value[b[dest]] && !(h->flags & INCHECK))
+			if (!(bit_between[dest][i] & bit_all) && !(LineAttack2(xside, pieces[side][5][0], i, dest)))
 			{
-				return 2;
+				if (piece_value[h->capture] + 500 < piece_value[b[dest]] && !(h->flags & INCHECK))
+				{
+					return 2;
+				}
+				//if (b[dest] == 0 && bit_pawncaptures[side][dest] & bit_pieces[xside][0])
+				{
+					//continue;
+				}
+				Recap(i, dest);
+				return 1;
 			}
-			Recap(i, dest);
-			return 1;
 		}
 	}
 
-	b1 = bit_queenmoves[dest] & bit_pieces[side][4];
-	while (b1)
+	if( bit_queenmoves[dest] & bit_pieces[side][4])
+	for (int x = 0; x < total[side][4]; x++)
 	{
-		i = NextBit(b1);
-		b1 &= not_mask[i];
-		if (!(bit_between[dest][i] & bit_all) && !(LineAttack2(xside, pieces[side][5][0], i, dest)))
+		i = pieces[side][4][x];
+		if (bit_queenmoves[dest] & mask[i])
 		{
-			if (piece_value[h->capture] + 900 < piece_value[b[dest]] && !(h->flags & INCHECK))
+			if (!(bit_between[dest][i] & bit_all) && !(LineAttack2(xside, pieces[side][5][0], i, dest)))
 			{
-				return 2;
+				//if (b[dest] < 4 && bit_pawncaptures[side][dest] & bit_pieces[xside][0])
+				{
+					//continue;
+				}
+				Recap(i, dest);
+				return 1;
 			}
-			Recap(i, dest);
-			return 1;
 		}
 	}
 
@@ -794,7 +784,7 @@ void Recap(const int from, const int to)
 	g->to = to;
 }
 
-void PushPawn(const int from, const int to)
+void AddPawn(const int from, const int to)
 {
 	g = &move_list[mc++];
 	g->flags = 0;
@@ -813,7 +803,7 @@ void PushPawn(const int from, const int to)
 	g->score += PieceScore[side][0][to] - PieceScore[side][0][from];
 }
 
-void PushKnight(const int from, const int to)
+void AddKnight(const int from, const int to)
 {
 	g = &move_list[mc++];
 	g->flags = 0;
@@ -828,7 +818,7 @@ void PushKnight(const int from, const int to)
 	}
 }
 
-void PushBishop(const int from, const int to)
+void AddBishop(const int from, const int to)
 {
 	g = &move_list[mc++];
 	g->flags = 0;
@@ -842,7 +832,7 @@ void PushBishop(const int from, const int to)
 	}
 }
 
-void PushRook(const int from, const int to)
+void AddRook(const int from, const int to)
 {
 	g = &move_list[mc++];
 	g->flags = 0;
@@ -857,7 +847,7 @@ void PushRook(const int from, const int to)
 	}
 }
 
-void PushQueen(const int from, const int to)
+void AddQueen(const int from, const int to)
 {
 	g = &move_list[mc++];
 	g->flags = 0;
@@ -880,7 +870,7 @@ void PushQueen(const int from, const int to)
 	}
 }
 
-void PushKing(const int from, const int to)
+void AddKing(const int from, const int to)
 {
 	g = &move_list[mc++];
 	g->flags = 0;
@@ -889,54 +879,14 @@ void PushKing(const int from, const int to)
 	g->score = history[from][to];
 }
 
-void CheckPawn(const int from, const int to)
+void AddCheck(const int from, const int to, const int p)
 {
 	g = &move_list[mc++];
 	g->flags = CHECK;
 	if (b[to] < 6) g->flags |= CAPTURE;
 	g->from = from;
 	g->to = to;
-	g->score = check_history[0][to];
-}
-
-void CheckKnight(const int from, const int to)
-{
-	g = &move_list[mc++];
-	g->flags = CHECK;
-	if (b[to] < 6) g->flags |= CAPTURE;
-	g->from = from;
-	g->to = to;
-	g->score = check_history[1][to];
-}
-
-void CheckBishop(const int from, const int to)
-{
-	g = &move_list[mc++];
-	g->flags = CHECK;
-	if (b[to] < 6) g->flags |= CAPTURE;
-	g->from = from;
-	g->to = to;
-	g->score = check_history[2][to];
-}
-
-void CheckRook(const int from, const int to)
-{
-	g = &move_list[mc++];
-	g->flags = CHECK;
-	if (b[to] < 6) g->flags |= CAPTURE;
-	g->from = from;
-	g->to = to;
-	g->score = check_history[3][to];
-}
-
-void CheckQueen(const int from, const int to)
-{
-	g = &move_list[mc++];
-	g->flags = CHECK;
-	if (b[to] < 6) g->flags |= CAPTURE;
-	g->from = from;
-	g->to = to;
-	g->score = check_history[4][to];
+	g->score = check_history[p][to];
 }
 
 void GenPromote(const int from, const int to)
@@ -967,7 +917,8 @@ void GenPromote(const int from, const int to)
 	{
 		g = &move_list[mc++];
 		g->flags = PROMOTE;
-		if (b[to] < 6) g->flags |= CAPTURE;
+		if (b[to] < 6) 
+			g->flags |= CAPTURE;
 		g->from = from;
 		g->to = to;
 		g->score = CAPTURE_SCORE + 40;
@@ -1002,10 +953,10 @@ void GenNon()
 	{
 		i = NextBit(bp);
 		bp &= not_mask[i];
-		PushPawn(i, pawnplus[side][i]);
+		AddPawn(i, pawnplus[side][i]);
 		if (rank[side][i] == 1 && b[pawndouble[side][i]] == 6)
 		{
-			PushPawn(i, pawndouble[side][i]);
+			AddPawn(i, pawndouble[side][i]);
 		}
 	}
 
@@ -1030,7 +981,7 @@ void GenNon()
 		{
 			n = knightmoves[i][j];
 			if (b[n] == 6)
-				PushKnight(i, n);
+				AddKnight(i, n);
 		}
 	}
 
@@ -1058,7 +1009,7 @@ void GenNon()
 		{
 			continue;
 		}
-		PushKing(i, n);
+		AddKing(i, n);
 	}
 	first_move[ply + 1] = mc;
 }

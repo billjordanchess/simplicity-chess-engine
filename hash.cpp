@@ -281,7 +281,7 @@ int LookUp(const int s, const int depth, const int alpha, const int beta)
 	}
 	else if (type == ALPHA)
 	{
-		if (hashpos[s][currentkey].score <= alpha)
+		if (hashpos[s][currentkey].score <= alpha)//?
 			return(ALPHA);
 		return 0;
 	}

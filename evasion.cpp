@@ -11,7 +11,7 @@ const int eq[5] = { 0,0,-6,-4,-1 };
 
 void GenEP();
 
-void PushPawn(const int from, const int to);
+void AddPawn(const int from, const int to);
 
 void EvadePawn(const int from, const int to, const int n);
 void EvadeKnight(const int from, const int to);
@@ -27,7 +27,7 @@ void CapRook(const int from, const int to);
 void CapQueen(const int from, const int to);
 void CapKing(const int from, const int to);
 
-void Evasion()
+void Evasion(const int n)
 {
 	first_move[ply + 1] = first_move[ply];
 	mc = first_move[ply];
@@ -36,14 +36,11 @@ void Evasion()
 
 	int k = pieces[side][5][0];
 
-	int n;
-
-	if (game_list[hply - 1].flags & CHECK)
-		n = game_list[hply - 1].to;
-	else
-		n = GetChecker(xside, side, k);
-
-	GenEP();
+	//if (game_list[hply - 1].flags & CHECK)
+	//	n = game_list[hply - 1].to;
+	
+	if(b[n]==0)
+		GenEP();
 	if (bit_left[xside][n] & bit_pieces[side][0])
 	{
 		CapPawn(pawnleft[xside][n], n);
@@ -53,49 +50,62 @@ void Evasion()
 		CapPawn(pawnright[xside][n], n);
 	}
 
-	int i;
-
-	b1 = bit_pieces[side][1] & bit_knightmoves[n];
-	while (b1)
+	int i,x;
+	if(bit_pieces[side][1] & bit_knightmoves[n])
 	{
-		i = NextBit(b1);
-		b1 &= not_mask[i];
-		CapKnight(i, n);
-	}
-
-	b1 = bit_pieces[side][2] & bit_bishopmoves[n];
-	while (b1)
-	{
-		i = NextBit(b1);
-		b1 &= not_mask[i];
-		if (!(bit_between[i][n] & bit_all))
+		for( x = 0; x < total[side][1]; x++)
 		{
-			CapBishop(i, n);
+			i = pieces[side][1][x];
+			if (bit_knightmoves[n] & mask[i])
+				CapKnight(i, n);
 		}
 	}
 
-	b1 = bit_pieces[side][3] & bit_rookmoves[n];
-	while (b1)
+	if (bit_pieces[side][2] & bit_bishopmoves[n])
 	{
-		i = NextBit(b1);
-		b1 &= not_mask[i];
-		if (!(bit_between[i][n] & bit_all))
+		for (x = 0; x < total[side][2]; x++)
 		{
-			CapRook(i, n);
+			i = pieces[side][2][x];
+			if (bit_bishopmoves[n] & mask[i])
+			{
+				if (!(bit_between[i][n] & bit_all))
+				{
+					CapBishop(i, n);
+				}
+			}
 		}
 	}
 
-	b1 = bit_pieces[side][4] & bit_queenmoves[n];
-	while (b1)
+	if (bit_pieces[side][3] & bit_rookmoves[n])
 	{
-		i = NextBit(b1);
-		b1 &= not_mask[i];
-		if (!(bit_between[i][n] & bit_all))
+		for (x = 0; x < total[side][3]; x++)
 		{
-			CapQueen(i, n);
+			i = pieces[side][3][x];
+			if (bit_rookmoves[n] & mask[i])
+			{
+				if (!(bit_between[i][n] & bit_all))
+				{
+					CapRook(i, n);
+				}
+			}
 		}
 	}
 
+	if (bit_pieces[side][4] & bit_queenmoves[n])
+	{
+		for (x = 0; x < total[side][4]; x++)
+		{
+			i = pieces[side][4][x];
+			if (bit_queenmoves[n] & mask[i])
+			{
+				if (!(bit_between[i][n] & bit_all))
+				{
+					CapQueen(i, n);
+				}
+			}
+		}
+	}
+	
 	int sq;
 
 	BITBOARD b2 = bit_kingmoves[pieces[xside][5][0]];
@@ -126,11 +136,12 @@ void Evasion()
 	{
 		sq = NextBit(b1);
 		b1 &= not_mask[sq];
-		if (!(Attack(xside, sq)))//?? 
+		if (!(Attack(xside, sq)))
 			EvadeKing(k, sq);
 	}
 
-	if (b[n] < 2 || difference[n][k] == 1)
+	//if (b[n] < 2 || difference[n][k] == 1)
+	if(bit_between[n][k]==0)
 	{
 		first_move[ply + 1] = mc;
 		return;
@@ -150,7 +161,7 @@ void Evasion()
 	{
 		sq = NextBit(b1);
 		b1 &= not_mask[sq];
-		PushPawn(sq, pawnplus[side][sq]);
+		AddPawn(sq, pawnplus[side][sq]);
 		//EvadePawn(i,sq,n);
 	}
 
@@ -158,10 +169,9 @@ void Evasion()
 	{
 		sq = NextBit(b2);
 		b2 &= not_mask[sq];
-		PushPawn(pawndouble[xside][sq], sq);
+		AddPawn(pawndouble[xside][sq], sq);
 	}
 
-	int x;
 	for (x = 0; x < total[side][1]; x++)
 	{
 		i = pieces[side][1][x];

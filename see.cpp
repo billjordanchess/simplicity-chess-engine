@@ -27,70 +27,70 @@ void PopSwap()
 														//genlists
 														Num[0] = Num[1] = 0;
 														memset(List, 0, sizeof(List));
-														List[1][Num[1]++] = piece_value[a];
+														List[1][Num[1]++] = p_value[a];
 
 														bb = b0; cc = c; dd = d; ee = e;
 														bb1 = b1; cc1 = c1; dd1 = d1; ee1 = e1;
 
 														while (bb)
 														{
-															List[0][Num[0]++] = 100;
+															List[0][Num[0]++] = 1;
 															bb--;
 														}
 														while (cc)
 														{
-															List[0][Num[0]++] = 300;
+															List[0][Num[0]++] = 3;
 															cc--;
 														}
 														while (dd)
 														{
-															List[0][Num[0]++] = 500;
+															List[0][Num[0]++] = 5;
 															dd--;
 														}
 														while (ee)
 														{
-															List[0][Num[0]++] = 900;
+															List[0][Num[0]++] = 9;
 															ee--;
 														}
 
 														if (f == 1)
-															List[0][Num[0]++] = 300;
+															List[0][Num[0]++] = 3;
 														if (f == 2)
-															List[0][Num[0]++] = 500;
+															List[0][Num[0]++] = 5;
 
 														while (bb1)
 														{
-															List[1][Num[1]++] = 100;
+															List[1][Num[1]++] = 1;
 															bb1--;
 														}
 														while (cc1)
 														{
-															List[1][Num[1]++] = 300;
+															List[1][Num[1]++] = 3;
 															cc1--;
 														}
 														while (dd1)
 														{
-															List[1][Num[1]++] = 500;
+															List[1][Num[1]++] = 5;
 															dd1--;
 														}
 														while (ee1)
 														{
-															List[1][Num[1]++] = 900;
+															List[1][Num[1]++] = 9;
 															ee1--;
 														}
 
 														if (f1 == 1)
-															List[1][Num[1]++] = 300;
+															List[1][Num[1]++] = 3;
 														if (f1 == 2)
-															List[1][Num[1]++] = 500;
+															List[1][Num[1]++] = 5;
 
 														if (k == 1)
-															List[0][Num[0]++] = 10000;
+															List[0][Num[0]++] = 1;
 														if (k1 == 1)
-															List[1][Num[1]++] = 10000;
+															List[1][Num[1]++] = 1;
 
 														int sc = Score(s, xs);
-														if (sc < -9000)
+														if (sc < -90)
 															sc = 0;
 
 														Swap[a][key1][key2][f][f1][k][k1] = sc;

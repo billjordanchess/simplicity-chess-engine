@@ -55,7 +55,7 @@ extern int hash_start, hash_dest;
 int main()
 {
 	printf("Simplicity Chess Engine\n");
-	printf("Version 1.1, 20/9/21\n");
+	printf("Version 1.3, 10/10/21\n");
 	printf("Bill Jordan 2021\n");
 	printf("FIDE Master and 2021 state champion.\n");
 	printf("I have published a number of chess books\n");
@@ -84,8 +84,9 @@ int main()
 	SetBits();
 	NewPosition();
 	SetUp();
+	srand(time(NULL));
 
-	check = Attack(xside, pieces[side][5][0]);
+	check = Check(xside, pieces[side][5][0]);
 	Gen(check);
 	computer_side = EMPTY;
 	player[0] = 0;
@@ -116,7 +117,7 @@ int main()
 				printf("(no legal moves)\n");
 				computer_side = EMPTY;
 				print_board();
-				check = Attack(xside, pieces[side][5][0]);
+				check = Check(xside, pieces[side][5][0]);
 				Gen(check);
 				continue;
 			}
@@ -124,17 +125,20 @@ int main()
 			printf("\n");
 			collisions = 0;
 
+			//if (ply == 0)
+				;//	ShowAllEval(0);
+
 			printf("Computer's move: %s\n", MoveString(hash_start, hash_dest, 0)); printf("\n");
 			MakeMove(hash_start, hash_dest,0);
 			
 			printf("\n cut nodes %d ", cut_nodes);
 			printf(" first nodes %d ", first_nodes);
 			if (cut_nodes > 0)
-				printf(" percent %d %", (first_nodes * 100 / cut_nodes));
+				printf(" percent %d ", (first_nodes * 100 / cut_nodes));
 			if(cut_nodes>0)
-			printf(" av cut %d %",av_nodes/cut_nodes);
+			printf(" av cut %d ",av_nodes/cut_nodes);
 			if (a_nodes > 0)
-				printf(" av sort %d %", (100 - b_nodes * 100 / a_nodes));
+				printf(" av sort %d \n", (100 - b_nodes * 100 / a_nodes));
 
 			SetMaterial();
 
@@ -150,7 +154,7 @@ int main()
 			ply = 0;
 
 			first_move[0] = 0;
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			PrintResult();
 			printf(" turn "); printf("%d", turn++);
@@ -185,7 +189,7 @@ int main()
 		if (!strcmp(s, "moves"))
 		{
 			printf("Moves \n");
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			for (int i = 0; i < first_move[1]; ++i)
 			{
@@ -254,7 +258,7 @@ int main()
 			ply = 0;
 			if (first_move[0] != 0)
 				first_move[0] = 0;
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			continue;
 		}
@@ -266,7 +270,7 @@ int main()
 
 		ply = 0;
 		first_move[0] = 0;
-		check = Attack(xside, pieces[side][5][0]);
+		check = Check(xside, pieces[side][5][0]);
 		Gen(check);
 		m = ParseMove(s);
 		//Attack 26/4/21
@@ -421,6 +425,8 @@ void xboard()
 	int analyze = 0;
 	int lookup;
 	int check;
+	char sFen[256];
+	char sText[256];
 
 	signal(SIGINT, SIG_IGN);
 	printf("\n");
@@ -435,7 +441,7 @@ void xboard()
 		{
 			think();
 			SetMaterial();
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			currentkey = GetKey();
 			currentlock = GetLock();
@@ -455,7 +461,7 @@ void xboard()
 			MakeMove(hash_start, hash_dest,0);
 
 			ply = 0;
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			PrintResult();
 			continue;
@@ -484,7 +490,7 @@ void xboard()
 		{
 			side = 0;
 			xside = 1;
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			computer_side = 1;
 			continue;
@@ -493,7 +499,7 @@ void xboard()
 		{
 			side = 1;
 			xside = 0;
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			computer_side = 0;
 			continue;
@@ -559,7 +565,7 @@ void xboard()
 				continue;
 			UnMakeMove();
 			ply = 0;
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			continue;
 		}
@@ -570,7 +576,7 @@ void xboard()
 			UnMakeMove();
 			UnMakeMove();
 			ply = 0;
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			continue;
 		}
@@ -589,9 +595,20 @@ void xboard()
 			print_board();
 			continue;
 		}
+		if (!strcmp(command, "sb"))
+		{
+			sFen[0] = 0;
+			strcat_s(sFen, "c:\\users\\bill\\desktop\\bscp\\");//
+			scanf("%s", sText);
+			strcat_s(sFen, sText);
+			strcat_s(sFen, ".fen");
+			LoadDiagram(sFen, 1);
+			print_board();
+			continue;
+		}
 
 		first_move[0] = 0;
-		check = Attack(xside, pieces[side][5][0]);
+		check = Check(xside, pieces[side][5][0]);
 		Gen(check);
 
 		m = ParseMove(line);
@@ -600,7 +617,7 @@ void xboard()
 		else
 		{
 			ply = 0;
-			check = Attack(xside, pieces[side][5][0]);
+			check = Check(xside, pieces[side][5][0]);
 			Gen(check);
 			PrintResult();
 		}
@@ -614,7 +631,7 @@ void PrintResult()
 	int check;
 
 	SetMaterial();
-	check = Attack(xside, pieces[side][5][0]);
+	check = Check(xside, pieces[side][5][0]);
 	Gen(check);
 	for (i = 0; i < first_move[1]; ++i)
 		if (MakeMove(move_list[i].from,move_list[i].to, move_list[i].flags))
@@ -636,7 +653,7 @@ void PrintResult()
 		print_board();
 		printf(" end of game ");
 
-		if (Attack(xside, NextBit(bit_pieces[side][K])))
+		if (Attack(xside, pieces[side][5][0]))
 		{
 			if (side == 0)
 			{
@@ -729,10 +746,12 @@ int LoadDiagram(char* file, int num)
 		case 'P': AddPiece(0, 0, j); i++; break;
 		case 'k': AddPiece(1, 5, j); i++; break;
 		case 'q': AddPiece(1, 4, j); i++; break;
-		case 'r': AddPiece(1, 3, j); i++; break;
+		case 'r': AddPiece(1, 3, j); i++; break; 
 		case 'b': AddPiece(1, 2, j); i++; break;
 		case 'n': AddPiece(1, 1, j); i++; break;
 		case 'p': AddPiece(1, 0, j); i++; break;
+		default:
+			break;
 		}
 		c++;
 		if (ts[c] == ' ')
@@ -740,6 +759,7 @@ int LoadDiagram(char* file, int num)
 		if (i > 63)
 			break;
 	}
+	printf(" ts %s ", ts);
 	if (ts[c] == ' ' && ts[c + 2] == ' ')
 	{
 		if (ts[c + 1] == 'w')
@@ -766,6 +786,12 @@ int LoadDiagram(char* file, int num)
 		}
 		c++;
 	}
+	if (bit_pieces[0][K] & mask[E1]) castle |= 1; 
+	if (bit_pieces[0][K] & mask[E1]) castle |= 2; 
+	if (bit_pieces[1][K] & mask[E8]) castle |= 4; 
+	if (bit_pieces[1][K] & mask[E8]) castle |= 8; 
+	castle = 0;//
+	//patch
 
 	CloseDiagram();
 	print_board();
@@ -781,6 +807,7 @@ int LoadDiagram(char* file, int num)
 	currentpawnkey = GetPawnKey();
 	currentpawnlock = GetPawnLock();
 	hply = 10;
+	//book = 0;
 	return 0;
 }
 
@@ -826,7 +853,7 @@ void SetMaterial()
 			else
 				c = 1;
 			if (b[x] == 0)
-				pawn_mat[c] += 100;
+				pawn_mat[c]++;
 			else
 				piece_mat[c] += piece_value[b[x]];
 		}

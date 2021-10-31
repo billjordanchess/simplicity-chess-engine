@@ -8,23 +8,49 @@
 
 int bishop_pair[2][3] = { {0,0,20},{0,0,20} };
 
-int RookMoveCount(const int x);
-int BishopMoveCount(const int x, const BITBOARD bp);
+int RookMoveCount(const int x, const BITBOARD bp, const BITBOARD xp);
+int BishopMoveCount(const int x, const BITBOARD bp, const BITBOARD xp);
+int QueenMoveCount(const int x, const BITBOARD bp);
 
 int EvalPawns(const int s, const int xs);
 int EvalPawn(const int s, const int xs, const int sq);
 
 int EvalEndgame();
 
+int bishopmoves[14] = {-5,1,2,3,4,5,6,7,8,9,10,11,12,13};
+int rookmoves[15] = {-5,1,2,3,4,5,6,7,8,9,10,11,12,13,14};
+int queenmoves[28] = {-5,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,9};
+
+/*
+failure to break centre e4 c5 d4 nf6 nc3 e6
+bd3 in front of d2
+too many kh1s
+early kf1 and kg1
+self pin with bd6
+king blocking rook or bishop
+failure to attack with pawns
+pawn forks
+*/
+
+void z();
+
 int eval(const int alpha, const int beta)
 {
-	if (piece_mat[0] <= 900 && piece_mat[1] <= 900)
+	if (piece_mat[0] <= QVAL && piece_mat[1] <= QVAL)
 	{
-		return EvalEndgame();
+		if (pawn_mat[0] == 0 && pawn_mat[1] == 0)
+		{
+			return EvalPawnless();
+		}
+		if ((piece_mat[0] <BBVAL || piece_mat[0] == QVAL) && (piece_mat[1] < BBVAL || piece_mat[1] == QVAL))
+		{
+			return EvalEndgame(); 
+		}
 	}
 
-	int king0 = pieces[0][5][0];
-	int king1 = pieces[1][5][0];
+	int king[2];
+	king[0] = pieces[0][5][0];
+	king[1] = pieces[1][5][0];
 
 	int score[2] = {0,0};
 
@@ -70,29 +96,29 @@ int eval(const int alpha, const int beta)
 		bp = bit_pieces[1][0] | (bit_pieces[0][0] & bit_pawnattacks[0]);
 		AddHashbp1(bp);
 	}
-	score[0] += piece_mat[0] + pawn_mat[0] + table_score[0];
-	score[1] += piece_mat[1] + pawn_mat[1] + table_score[1];
+	score[0] += piece_mat[0] + centi_pawns[pawn_mat[0]] + table_score[0];
+	score[1] += piece_mat[1] + centi_pawns[pawn_mat[1]] + table_score[1];
 
 	if (bit_pieces[1][4])
 	{
-		score[0] += KingScore[0][king0];
-		score[0] += GetHashDefence(0, kingloc[king0]);
-		score[1] += kingqueen[pieces[1][4][0]][king0];
+		score[0] += KingScore[0][king[0]];
+		score[0] += GetHashDefence(0, kingloc[king[0]]);
+		score[1] += kingqueen[pieces[1][4][0]][king[0]];
 	}
 	else
 	{
-		score[0] += king_endgame_score[king0];
+		score[0] += king_endgame_score[king[0]];
 	}
 
 	if (bit_pieces[0][4])
 	{
-		score[1] += KingScore[1][king1];
-		score[1] += GetHashDefence(1, kingloc[king1]);
-		score[0] += kingqueen[pieces[0][4][0]][king1];
+		score[1] += KingScore[1][king[1]];
+		score[1] += GetHashDefence(1, kingloc[king[1]]);
+		score[0] += kingqueen[pieces[0][4][0]][king[1]];
 	}
 	else
 	{
-		score[1] += king_endgame_score[king1];
+		score[1] += king_endgame_score[king[1]];
 	}
 	if (mask[A7] & bit_pieces[0][2] && mask[B6] & bit_pieces[1][0])
 	{
@@ -112,76 +138,79 @@ int eval(const int alpha, const int beta)
 	}
 	if (score[side] - score[xside] + 80 <= alpha || score[side] - score[xside] - 80 > beta)
 	{
-		return score[side] - score[xside];
+	    return score[side] - score[xside];
 	}
-
+	
 	bit_pawnattacks[0] = GetHashPawnAttacks(0);
 	bit_pawnattacks[1] = GetHashPawnAttacks(1);
-	BITBOARD bp = GetHashbp0();
-	BITBOARD bp1 = GetHashbp1();
+	BITBOARD bpawn[2];
+	bpawn[0] = GetHashbp0();
+	bpawn[1] = GetHashbp1();
 
-	int x, sq;
-	for (x = 0; x < total[0][3]; x++)
+	int x, sq, xs;
+	for (int s = 0; s < 2; s++)
 	{
-		sq = pieces[0][3][x];
-		if (!(mask_cols[sq] & bit_pieces[0][0]))
+		xs = !s;
+		for (x = 0; x < total[s][3]; x++)
 		{
-			score[0] += 10;
-			if (!(mask_cols[sq] & bit_pieces[1][0]))
-				score[0] += 10;
+			sq = pieces[s][3][x];
+			if (!(mask_cols[sq] & bit_pieces[s][0]))
+			{
+				score[s] += 10;
+				if (!(mask_cols[sq] & bit_pieces[xs][0]))
+				{
+					score[s] += 10;
+					if (mask_cols[sq] & bit_pieces[xs][5])
+					{
+						//score[s] += 10;//7/10/21
+					}
+				}
+			}
+			if (adjfile[sq][king[xs]] && !(mask_path[s][sq] & bpawn[s]))
+			{
+				score[s] += 5;
+			}
+			score[s] += rookmoves[RookMoveCount(sq, (bpawn[xs] & bit_pawnattacks[xs]) | bit_units[s], bit_pieces[xs][0])];
 		}
-		if (adjfile[sq][king1] && !(mask_path[0][sq] & bp))
+		for (x = 0; x < total[s][2]; x++)
 		{
-			score[0] += 5;
+			//if (pieces[s][2][x] == H5)
+			//	z();
+			if (bit_bishopmoves[pieces[s][2][x]] & bit_kingmoves[pieces[xs][5][0]])
+				 score[s] += 2;
+			score[s] += bishopmoves[BishopMoveCount(pieces[s][2][x], (bpawn[xs] & bit_pawnattacks[xs]) | bit_pieces[s][0] | bit_pieces[s][5], bit_pieces[xs][0])];
 		}
-		score[0] += RookMoveCount(sq);
-	}
-	for (x = 0; x < total[1][3]; x++)
-	{
-		sq = pieces[1][3][x];
-		if (!(mask_cols[sq] & bit_pieces[1][0]))
+		score[s] += bishop_pair[s][total[s][2]];
+		int i, n;
+
+		for (x = 0; x < total[s][1]; x++)
 		{
-			score[1] += 10;
-			if (!(mask_cols[sq] & bit_pieces[0][0]))
-				score[1] += 10;
+			i = pieces[side][1][x];
+			for (int j = 0; j < knight_total[i]; j++)
+			{
+				n = knightmoves[i][j];
+				if (mask[n] & bit_pawnattacks[xs])
+					score[s] --;
+			}
+			if (bit_knightmoves[pieces[s][1][x]] & bit_kingmoves[king[xs]])
+				score[s] += 2;
 		}
-		if (adjfile[sq][king0] && !(mask_path[0][sq] & bp))
+		if (bit_pieces[s][4])
+			score[s] += queenmoves[QueenMoveCount(pieces[s][4][0], (bpawn[xs] & bit_pawnattacks[xs]) | bit_pieces[s][5])];
+		//kingmoves etc
+	}
+		if ((bit_pieces[0][0] & (mask[squares[0][D2]] | mask[E2])) << 8 & bit_units[0])
 		{
-			score[1] += 5;
+			score[0] -= 20;
 		}
-		score[1] += RookMoveCount(sq);
-	}
-
-	for (x = 0; x < total[0][2]; x++)
+		if ((bit_pieces[1][0] & (mask[D7] | mask[E7])) >> 8 & bit_units[1])
+		{
+			score[1] -= 20;
+		}
+	if (bit_pawnattacks[side] & bit_pieces[xside][1])
 	{
-		if (bit_bishopmoves[pieces[0][2][x]] & bit_kingmoves[pieces[1][5][0]])
-			score[0] += 5;
-		score[0] += BishopMoveCount(pieces[0][2][x], (bp & bit_pawnattacks[1]) | bit_pieces[0][5]);
-	}
-
-	for (x = 0; x < total[1][2]; x++)
-	{
-		if (bit_bishopmoves[pieces[1][2][x]] & bit_kingmoves[pieces[0][5][0]])
-			score[1] += 5;
-		score[1] += BishopMoveCount(pieces[1][2][x], (bp1 & bit_pawnattacks[0]) | bit_pieces[1][5]);
-	}
-
-	score[0] += bishop_pair[0][total[0][2]];
-	score[1] += bishop_pair[1][total[1][2]];
-
-	for (x = 0; x < total[0][1]; x++)
-	{
-		if (bit_knightmoves[pieces[0][1][x]] & bit_kingmoves[king1])
-			score[0] += 5;
-		if (bit_knightmoves[pieces[0][1][x]] & bit_pawnattacks[1])
-			score[0] -= 5;
-	}
-
-	for (x = 0; x < total[1][1]; x++)
-	{
-		score[1] += kingknight[pieces[1][1][x]][king0];
-		if (bit_knightmoves[pieces[1][1][x]] & bit_pawnattacks[0])
-			score[1] -= 5;
+		score[side] += 4;
+		//if(bit_pawnattacks[side] & bit_pieces[xside][1] & 1)
 	}
 
 	return score[side] - score[xside];
@@ -202,11 +231,11 @@ int EvalPawns(const int s, const int xs)
 	return score;
 }
 
-int EvalPawn(const int s, const int xs, const int sq)
+int EvalPawn(const int s, const int xs, const int sq)//165579
 {
 	int r = 0;
 
-		if (!(mask_passed[s][sq] & bit_pieces[xs][0]) && !(mask_path[s][sq] & bit_pieces[s][0]))
+	if (!(mask_passed[s][sq] & bit_pieces[xs][0]) && !(mask_path[s][sq] & bit_pieces[s][0]))
 	{
 		if (bit_pieces[s][0] & bit_adjacent[sq])
 		{
@@ -217,6 +246,7 @@ int EvalPawn(const int s, const int xs, const int sq)
 			r += defended_passed[s][sq];
 		}
 		r += passed[s][sq];
+		r += PieceScore[s][0][sq];
 		passed_list[s] |= mask[sq]; //contesting pawns
 		kingside[s] += KingSide[s][sq];
 		queenside[s] += QueenSide[s][sq];
@@ -260,8 +290,7 @@ int EvalPawn(const int s, const int xs, const int sq)
 	}
 	r += PieceScore[s][0][sq];
 	if (mask[sq] & mask_centre && bit_adjacent[sq] & bit_pieces[s][0])
-		r += 8;
-	//could add p defends centre pawn
+		r += 12;// 12;//8
 	kingside[s] += KingSide[s][sq];
 	queenside[s] += QueenSide[s][sq];
 

@@ -1,7 +1,6 @@
 #pragma once
 #include "globals.h"
 
-bool KingAttack(const int s, int k, const int start, const int dest);
 void UnMakeCapture();
 void AfterCastle();
 void BeforeCastle();
@@ -22,6 +21,13 @@ void UpdatePawn(const int s, const int start, const int dest)
 
 void UpdatePiece(const int s, const int p, const int start, const int dest)
 {
+	// Debug(1);
+	//if (nodes > 11500)
+	//	z();
+	if (start==D3 && dest == C4 && b[D7] == 3 && b[F3]==5)
+	{
+		//z();
+	}
 	bit_units[s] &= not_mask[start];
 	bit_units[s] |= mask[dest];
 	bit_all = bit_units[0] | bit_units[1];
@@ -31,7 +37,7 @@ void UpdatePiece(const int s, const int p, const int start, const int dest)
 	bit_pieces[s][p] &= not_mask[start];
 	bit_pieces[s][p] |= mask[dest];
 
-	if (p == 0)
+	if (p==0)
 	{
 		AddPawnKeys(s, start, dest);
 		return;
@@ -47,10 +53,12 @@ void UpdatePiece(const int s, const int p, const int start, const int dest)
 			break;
 		}
 	}
+	//Debug(2);
 }
 
 void RemovePiece(const int s, const int p, const int sq)
 {
+	
 	AddKey(s, p, sq);
 	b[sq] = EMPTY;
 	bit_units[s] &= not_mask[sq];
@@ -59,7 +67,7 @@ void RemovePiece(const int s, const int p, const int sq)
 	
 	if (p == 0)
 	{
-		pawn_mat[s] -= 100;
+		pawn_mat[s] --;
 		AddPawnKey(s, sq);
 		return;
 	}
@@ -90,7 +98,7 @@ void AddPiece(const int s, const int p, const int sq)
 		
 	if (p == 0)
 	{
-		pawn_mat[s] += 100;
+		pawn_mat[s]++;
 		AddPawnKey(s, sq);
 		return;
 	}
@@ -311,25 +319,6 @@ void UnMakeRecapture()
 	AddPiece(xside, game_list[hply].capture, game_list[hply].to);
 }
 
-
-bool KingAttack(const int s, int k, const int start, const int dest)
-{
-	BITBOARD b1 = bit_bishopmoves[k] & (bit_pieces[s][2] | bit_pieces[s][4]);
-	b1 |= (bit_rookmoves[k] & (bit_pieces[s][3] | bit_pieces[s][4]));
-	b1 &= not_mask[dest];
-
-	BITBOARD b2 = (bit_all | mask[dest]) & not_mask[start];
-
-	while (b1)
-	{
-		int i = NextBit(b1);
-		if (!(bit_between[i][k] & b2))
-			return true;
-		b1 &= not_mask[i];
-	}
-	return false;
-}
-
 void BeforeCastle()
 {
 	KingScore[side][squares[side][F1]] = -60;
@@ -339,6 +328,8 @@ void BeforeCastle()
 	PieceScore[side][2][squares[side][G2]] = 4;
 	PieceScore[side][2][squares[side][F1]] = -12;
 	PieceScore[side][1][squares[side][G1]] = -20;
+	PieceScore[side][0][squares[side][F2]] = 5;
+	PieceScore[side][0][squares[side][F3]] = 3;
 }
 
 void AfterCastle()
@@ -350,4 +341,6 @@ void AfterCastle()
 	PieceScore[side][2][squares[side][G2]] = 8;
 	PieceScore[side][2][squares[side][F1]] = -10;
 	PieceScore[side][1][squares[side][G1]] = -16;	
+	PieceScore[side][0][squares[side][F2]] = 4;
+	PieceScore[side][0][squares[side][F3]] = 4;
 }

@@ -119,12 +119,13 @@ void LoadBook()
 	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 b1c3 g8f6 c1g5 f8b4 ");
 	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 b1c3 f8b4 e4e5 c7c5 ");
 	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 b1c3 d5e4 c3e4 b8d7 ");
+	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 b1d2 b8c6 g1f3 g8f6 ");//
 	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 b1d2 g8f6 e4e5 f6d7 ");
 	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 b1d2 c7c5 g1f3 b8c6 ");
 	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 ");
 	strcpy_s(lines[c++], "e2e4 c7c6 d2d4 d7d5 e4e5 c8f5 b1c3 e7e6 ");
 	strcpy_s(lines[c++], "e2e4 c7c6 d2d4 d7d5 e4d5 c6d5 f1d3 b8c6 ");
-	strcpy_s(lines[c++], "e2e4 c7c6 d2d4 d7d5 e4d5 c6d5 c2c4 b8c6 ");
+	strcpy_s(lines[c++], "e2e4 c7c6 d2d4 d7d5 e4d5 c6d5 c2c4 g8f6 ");
 	strcpy_s(lines[c++], "e2e4 c7c6 d2d4 d7d5 b1c3 d5e4 c3e4 c8f5 ");
 	strcpy_s(lines[c++], "e2e4 c7c6 d2d4 d7d5 b1c3 d5e4 c3e4 b8d7 ");
 	strcpy_s(lines[c++], "e2e4 c7c6 d2d4 d7d5 b1c3 d5e4 c3e4 g8f6 ");
@@ -170,15 +171,18 @@ void LoadBook()
 	strcpy_s(lines[c++], "e2e4 e7e5 b1c3 g8f6 f1c4 b8c6 d2d3 f8b4 ");
 	strcpy_s(lines[c++], "e2e4 d7d5 e4d5 d8d5 b1c3 d5a5 d2d4 g8f6 ");
 	strcpy_s(lines[c++], "d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 f8e7 ");
+	strcpy_s(lines[c++], "d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 nbd7 ");//
 	strcpy_s(lines[c++], "d2d4 d7d5 c2c4 c7c6 b1c3 g8f6 g1f3 e7e6 ");
+	strcpy_s(lines[c++], "d2d4 d7d5 c2c4 c7c6 b1c3 g8f6 g1f3 d5c4 ");//
 	strcpy_s(lines[c++], "d2d4 d7d5 c2c4 c7c6 g1f3 g8f6 e2e3 b8d7 ");
 	strcpy_s(lines[c++], "d2d4 d7d5 c2c4 d5c4 e2e3 g8f6 f1c4 e7e6 ");
+	strcpy_s(lines[c++], "d2d4 d7d5 c2c4 d5c4 e2e4 e7e5 g1f3 e5d4 ");//
 	strcpy_s(lines[c++], "d2d4 d7d5 c2c4 c7c6 c4d5 c6d5 b1c3 g8f6 ");
 	strcpy_s(lines[c++], "d2d4 d7d5 c2c4 e7e6 c4d5 e6d5 b1c3 g8f6 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 c7c5 d4d5 g7g6 b1c3 d7d6 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4 d1c2 c7c5 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4 e2e3 b7b6 ");
-	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4 e2e3 c7c5");
+	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4 e2e3 c7c5 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4 e2e3 b8c6 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 e7e6 b1c3 c7c5 g1f3 c5d4 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 e7e6 b1c3 c7c5 d4d5 e6d5 ");
@@ -190,6 +194,7 @@ void LoadBook()
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5 g1f3 f8g7 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5 c1g5 f6e4 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 g7g6 b1c3 f8g7 e2e4 d7d6 ");
+	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 g7g6 b1c3 f8g7 g1f3 d7d6 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 g1f3 g7g6 c1f4 f8g7 e2e3 d7d6 ");
 	strcpy_s(lines[c++], "d2d4 f7f5 c2c4 g8f6 g1f3 e7e6 g2g3 d7d5 ");
 	strcpy_s(lines[c++], "d2d4 f7f5 c2c4 g8f6 g1f3 e7e6 g2g3 d7d6 ");
