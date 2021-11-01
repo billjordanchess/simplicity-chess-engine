@@ -615,7 +615,7 @@ int EvalPawnless()
 {
 	if (game_list[hply - 1].capture < 6)
 	{
-		int result = endmatrix[piece_mat[side]][total[side][1]][piece_mat[xside]][total[xside][1]];
+		int result = endmatrix[piece_mat[side]/100][total[side][1]][piece_mat[xside]/100][total[xside][1]];
 		if (result == DRAWN)
 		{
 			drawn = 1;
