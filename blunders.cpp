@@ -8,7 +8,8 @@ int p_value[6] = {1,3,3,5,9,0};
 int Blunder(const int to, const int flags)
 {
 	int bc = 0;
-	bc = BestCapture(side, xside, bit_units[xside]);
+	//bc = BestCapture(side, xside, bit_units[xside]);
+	bc = BestCaptureSquare(side, xside, to, b[to]);//??20/1/
 	if (bc > 0)
 	{
 		return -bc;
@@ -82,7 +83,7 @@ int BlunderThreat(const int threat, const int ts, const int td, const int cv, co
 	{
 		if (p_value[b[to]] <= cv)
 			return 0;
-		bc = BestCapture(side, xside, mask[to] | mask[td]);// -25;//
+		bc = BestCapture(side, xside, mask[to] | mask[td]);
 
 		if (bc > cv)
 		{
@@ -322,7 +323,7 @@ BITBOARD SetTargets(const int s, const int v)
 	return 0;
 }
 
-int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest, const int alpha,const int ev)
+int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest)
 {
 	int sq, i, x;
 	int best = 0;
@@ -345,25 +346,28 @@ int GetThreatMove(const int s, const int xs, int& threat_start, int& threat_dest
 	}
 
 	BITBOARD bu = 0;
-	//*
-	int diff = alpha - ev - 1;
 
-	if (diff < 900)
+	int diff = piece_mat[xs] + pawn_mat[xs] - piece_mat[s] - pawn_mat[s];
+
+	if (diff < 9)
 	{
 		bu |= bit_pieces[xs][4];
-		if (diff < 500)
+		if (diff < 5)
 		{
 			bu |= bit_pieces[xs][3];
-			if (diff < 300)
+			if (diff < 3)
 			{
 				bu |= bit_pieces[xs][1] | bit_pieces[xs][2];
-				if (diff < 100)
+				if (diff < 1)
 					bu |= bit_pieces[xs][0];
 			}
 		}
 	}
 	if (bu == 0)
+	{
+		//z();
 		return 0;
+	}
 		//*/
 	int b3=0;
 	if (s == 0)
@@ -607,93 +611,9 @@ int MakeThreat(const int s, const int xs, const int threat_start, const int thre
 	return 0;
 }
 
-void MoveAttacked(const int xs,const int sq, const int attacker, const int ply)
-{
-	if (b[sq] == 6)//prom
-	{
-		int from,to;
-		for (int x = first_move[ply]; x < first_move[ply + 1]; x++)
-		{
-			from = move_list[x].from;
-			to = move_list[x].to;
-			if (b[from] == 1 && bit_knightmoves[to] & mask[sq]
-				|| (b[from] == 2 && bit_bishopmoves[to] & mask[sq] && !(bit_between[to][sq] & bit_all))
-				|| (b[from] == 3 && bit_rookmoves[to] & mask[sq] && !(bit_between[to][sq] & bit_all))
-				|| (b[from] == 4 && bit_queenmoves[to] & mask[sq] && !(bit_between[to][sq] & bit_all))
-				|| (b[from] == 5 && bit_kingmoves[to] & mask[sq])
-				)
-			{
-				move_list[x].score += 8;
-				//Alg(sq, sq);
-				//Alg(from, to);
-				//z();
-			}
-		}
-		return;
-	}
-	int score = p_value[b[sq]];
-
-	BITBOARD bu = 0;
-	if (LookUpPawn())
-	{
-		bu = GetHashPawnAttacks(xs);
-	}
-	else
-	{
-		if (xs == 0)
-		{
-			bu = (bit_pieces[0][0] & not_a_file) << 7;
-			bu |= (bit_pieces[0][0] & not_h_file) << 9;
-		}
-		else
-		{
-			bu = (bit_pieces[1][0] & not_a_file) >> 9;
-			bu |= (bit_pieces[1][0] & not_h_file) >> 7;
-		}
-	}
-	if (b[sq] > 1)
-	{
-		if (b[attacker] == 3)
-		{
-			bu |= bit_rookmoves[attacker];
-		}
-		else if (b[attacker] == 2)
-		{
-			bu |= bit_bishopmoves[attacker];
-		}
-		else if (b[attacker] == 1)
-		{
-			bu |= bit_knightmoves[attacker];
-		}
-		else if (b[attacker] == 4)
-		{
-			bu |= bit_queenmoves[attacker];
-		}
-	}
-	bu &= ~(bit_pieces[xs][1] | bit_pieces[xs][2] | bit_pieces[xs][3] | bit_pieces[xs][4]);
-
-	for (int x = first_move[ply]; x < first_move[ply + 1]; x++)
-	{   
-		if (move_list[x].flags & CAPTURE && b[move_list[x].to] >= b[sq])
-		{
-			if(move_list[x].to == attacker)
-				move_list[x].score += score;
-			continue;
-		}
-		if (move_list[x].flags & CHECK)
-			continue;
-		if (move_list[x].from == sq && !(mask[move_list[x].to] & bu))
-		{
-			move_list[x].score += score + KILLER_SCORE;
-			if (x < first_move[ply + 1]-1 && move_list[x+1].from != sq)
-				break;
-		}
-	}
-}
-
 int BestThreat(const int s, const int xs, const int diff)
 {
-	if (diff >= 900)
+	if (diff >= 9)
 		return 0;
 	int sq, i, x;
 	
@@ -717,13 +637,13 @@ int BestThreat(const int s, const int xs, const int diff)
 
 	BITBOARD bu = bit_pieces[xs][4];
 
-	if (diff < 500)
+	if (diff < 5)
 	{
 		bu |= bit_pieces[xs][3];
-		if (diff < 300)
+		if (diff < 3)
 		{
 			bu |= bit_pieces[xs][1] | bit_pieces[xs][2];
-			if (diff < 100)
+			if (diff < 1)
 				bu |= bit_pieces[xs][0];
 		}
 	}

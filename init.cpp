@@ -12,34 +12,33 @@
 int b[64];
 int side;
 int xside;
-int castle;  
+int castle;
 int fifty;
 
 int ply;
 int hply;
 
 move_data move_list[GEN_STACK];
+game game_list[HIST_STACK];
 
 int first_move[MAX_PLY];
 
 int history[64][64];
-game game_list[HIST_STACK];
 
 int max_time;
 int max_depth;
-
 int start_time;
 int stop_time;
 
-int nodes; 
+ULONG nodes;
 int cut_nodes;
 int first_nodes;
 int av_nodes;
 
-int centi_pawns[9] = {0,100,200,300,400,500,600,700,800};
+int centi_pawns[9] = { 0,100,200,300,400,500,600,700,800 };
 int centi_pieces[104];
 
-int castle_mask[64] = {//reversed
+int castle_mask[64] = {
 	13, 15, 15, 15, 12, 15, 15, 14,
 	15, 15, 15, 15, 15, 15, 15, 15,
 	15, 15, 15, 15, 15, 15, 15, 15,
@@ -50,8 +49,8 @@ int castle_mask[64] = {//reversed
 	7, 15, 15, 15,  3, 15, 15, 11
 };
 
-char piece_char[6] = {
-	'P', 'N', 'B', 'R', 'Q', 'K'
+char piece_char[7] = {
+	'P', 'N', 'B', 'R', 'Q', 'K', 'X'
 };
 
 int kmoves[64][8];
@@ -89,7 +88,6 @@ int Num[2];
 int InCheck[MAX_PLY];
 
 //moves.cpp
-int indexpawn[64];
 int table_score[2];
 int kingside[2];
 int queenside[2];
@@ -116,22 +114,18 @@ int passed[2][64];
 int adjacent_passed[2][64];
 int defended_passed[2][64];
 
-//search.cpp
-
+//Search.cpp
 int currentmax;
-int threatdepth;
-
-int Alpha, Beta;//threats
 
 int castle_start[64];
 int castle_dest[64];
 
-int piece_value[6] = { 100, 300, 300, 500, 900, 0 };
+int piece_value[6] = { 1, 3, 3, 5, 9, 0 };
 
 int pawn_score[64] = {
 	  0,   0,   0,   0,   0,   0,   0,   0,
-	  0,   2,   4, -12, -12,   5,   2,   0,
-	  0,   2,   4,   4,   6,   3,   2,   0,
+	  0,   2,   4,  -8,  -8,   5,   2,   0,
+	  0,   2,   4,   4,   4,   3,   2,   0,
 	  0,   2,   4,   8,   8,   4,   2,   0,
 	  0,   2,   4,   8,   8,   4,   2,   0,
 	  4,   8,  10,  16,  16,  10,   8,   4,
@@ -151,7 +145,7 @@ int knight_score[64] = {
 };
 
 int bishop_score[64] = {
-	-10, -10, -12, -10, -10, -12, -10, -10,
+	-10, -10, -14, -10, -10, -14, -10, -10,
 	  0,   4,   4,   4,   4,   4,   6,   0,
 	  2,   4,   6,   6,   6,   6,   4,   2,
 	  2,   4,   6,   8,   8,   6,   4,   2,
@@ -185,7 +179,7 @@ int queen_score[64] = {
 
 int king_score[64] = {
 	 20,  20, -20, -40,  10, -60,  -40,  20,
-	 10,  20, -25, -30, -30, -45,  20,  10,    
+	 10,  20, -25, -30, -30, -45,  20,  10,
 	-24, -24, -24, -24, -24, -24, -24, -24,
 	-24, -24, -24, -24, -24, -24, -24, -24,
 	-48, -48, -48, -48, -48, -48, -48, -48,
@@ -316,32 +310,11 @@ int kingloc[64] = {
 	0, 0, 0, 2, 2, 1, 1, 1
 };
 
-int defended_pp[64] = {//25; 10 40 35 45 300
-	0, 0,  0,  0, 0,  0, 0, 0,
-	45, 45,  45,  45, 45,  45, 45, 45,
-	35, 35,  35,  35, 35,  35, 35, 35,
-	10, 10,  10,  10, 10,  10, 10, 10,
-	0, 0,  0,  0, 0,  0, 0, 0,
-	0, 0,  0,  0, 0,  0, 0, 0,
-	0, 0,  0,  0, 0,  0, 0, 0,
-	0, 0,  0,  0, 0,  0, 0, 0
-};
-
-int adjacent_pp[64] = {
-	0, 0,  0,  0, 0,  0, 0, 0,
-	300, 300,  300,  300, 300,  300, 300, 300,
-	40, 40,  40,  40, 40,  40, 40, 40,
-	25, 25,  25,  25, 25,  25, 25, 25,
-	0, 0,  0,  0, 0,  0, 0, 0,
-	0, 0,  0,  0, 0,  0, 0, 0,
-	0, 0,  0,  0, 0,  0, 0, 0,
-	0, 0,  0,  0, 0,  0, 0, 0
-};
-
 int piece_mat[2];
 int pawn_mat[2];
 
 int PieceScore[2][6][64];
+
 int PawnScore[2][64];
 int KnightScore[2][64];
 int BishopScore[2][64];
@@ -351,27 +324,18 @@ int KingScore[2][64];
 
 int a_nodes;
 int b_nodes;
-int check_history[6][64];
-
-int behind_queen;
-int king_defends;
-int Swap[6][100][100][3][3][2][2];
-int List[2][12];
 
 int scale[200];
 
-int KingEndgame[2][64]; 
-
-extern int pawnless[3][3][3][2];
-extern int reduce[2][64][64];
+int KingEndgame[2][64];
 
 void SetBits();
-int popCount(BITBOARD x);
 void SetPawnless();
 int GetBest(int ply);
 int GetBest2(int ply);
 
 void SetBoard();
+void ClearKillers();
 
 void StartGame()
 {
@@ -384,6 +348,7 @@ void StartGame()
 	first_move[0] = 0;
 	NewPosition();
 	SetBoard();
+	ClearKillers();
 }
 
 void SetUp()
@@ -407,7 +372,6 @@ void SetUp()
 	SetScores();
 	SetKingPawnTable();
 	SetPassed();
-	PopSwap();
 	SetPawnless();
 	SetNullDepth();
 	SetBoard();
@@ -425,12 +389,12 @@ void NewPosition()
 	kingattack[0] = queenattack[0] = 0;
 	kingattack[1] = queenattack[1] = 0;
 
-	bit_pieces[0][0] = bit_pieces[1][0] = 0;
-	bit_pieces[0][1] = bit_pieces[1][1] = 0;
-	bit_pieces[0][2] = bit_pieces[1][2] = 0;
-	bit_pieces[0][3] = bit_pieces[1][3] = 0;
-	bit_pieces[0][4] = bit_pieces[1][4] = 0;
-	bit_pieces[0][5] = bit_pieces[1][5] = 0;
+	bit_pieces[0][P] = bit_pieces[1][P] = 0;
+	bit_pieces[0][N] = bit_pieces[1][N] = 0;
+	bit_pieces[0][B] = bit_pieces[1][B] = 0;
+	bit_pieces[0][R] = bit_pieces[1][R] = 0;
+	bit_pieces[0][Q] = bit_pieces[1][Q] = 0;
+	bit_pieces[0][K] = bit_pieces[1][K] = 0;
 	bit_units[0] = bit_units[1] = 0;
 	bit_all = 0;
 	currentkey = GetKey();
@@ -467,15 +431,15 @@ void SetBoard()
 
 	for (int i = A2; i <= H2; i++)
 	{
-		AddPiece(0, 0, i);
+		AddPiece(0, P, i);
 	}
 	for (int i = A7; i <= H7; i++)
 	{
-		AddPiece(1, 0, i);
+		AddPiece(1, P, i);
 	}
 	for (int i = A3; i <= H6; i++)
 	{
-		b[i] = 6;
+		b[i] = EMPTY;
 	}
 	currentkey = GetKey();
 	currentlock = GetLock();
@@ -488,16 +452,16 @@ void SetPassed()
 	int v, w;
 	for (int x = 0; x < 64; x++)
 	{
-		switch (row[x]) 
+		switch (row[x])
 		{
 		case 0:v = 0; w = 800; break;
-		case 1:v = 10; w = 100; break;//120
-		case 2:v = 15; w = 60; break;//70
+		case 1:v = 10; w = 100; break;
+		case 2:v = 15; w = 60; break;
 		case 3:v = 24; w = 40; break;
-		case 4:v = 40; w = 24; break; 
-		case 5:v = 60; w = 15; break; 
+		case 4:v = 40; w = 24; break;
+		case 5:v = 60; w = 15; break;
 		case 6:v = 100; w = 10; break;
-		case 7:v = 800; w = 0; break;  
+		case 7:v = 800; w = 0; break;
 		default:
 			v = 0; w = 0;
 		}
@@ -510,46 +474,46 @@ void SetPawnless()
 {
 	memset(endmatrix, 0, sizeof(endmatrix));
 
-	endmatrix[0][0][0][0] = DRAWN;
-	endmatrix[3][0][0][0] = DRAWN;
-	endmatrix[0][0][3][0] = DRAWN;
-	endmatrix[3][1][0][0] = DRAWN;
-	endmatrix[0][0][3][1] = DRAWN;
+	endmatrix[0][0][0][0] = DRAWN;//no pieces
+	endmatrix[3][0][0][0] = DRAWN;//side has bishop
+	endmatrix[0][0][3][0] = DRAWN;//opponent has bishop
+	endmatrix[3][1][0][0] = DRAWN;//side has knight
+	endmatrix[0][0][3][1] = DRAWN;//opponent has knight
 
-	endmatrix[3][0][3][0] = DRAWN;
-	endmatrix[3][1][3][0] = DRAWN;
-	endmatrix[3][0][3][1] = DRAWN;
-	endmatrix[3][1][3][1] = DRAWN;
+	endmatrix[3][0][3][0] = DRAWN;//B v B
+	endmatrix[3][1][3][0] = DRAWN;//N v N
+	endmatrix[3][0][3][1] = DRAWN;//B v B
+	endmatrix[3][1][3][1] = DRAWN;// N v N
 
-	endmatrix[6][0][0][0] = 9900;
-	endmatrix[0][0][6][0] = -9900;
-	endmatrix[6][1][0][0] = 9900;
-	endmatrix[0][0][6][1] = -9900;
-	endmatrix[6][2][0][0] = DRAWN;
-	endmatrix[0][0][6][2] = DRAWN;
+	endmatrix[6][0][0][0] = 9900;//side has 2 bishops
+	endmatrix[0][0][6][0] = -9900;//opponent has 2 bishops
+	endmatrix[6][1][0][0] = 9900;//side has B + N
+	endmatrix[0][0][6][1] = -9900;//opponent has B + N
+	endmatrix[6][2][0][0] = DRAWN;//side has 2 knights
+	endmatrix[0][0][6][2] = DRAWN;//opponent has 2 knights
 
-	endmatrix[5][0][0][0] = 9900;
-	endmatrix[0][0][5][0] = -9900;
-	endmatrix[9][0][0][0] = 9900;
-	endmatrix[0][0][9][0] = -9900;
+	endmatrix[5][0][0][0] = 9900;//side has rook
+	endmatrix[0][0][5][0] = -9900;//opponent has rook
+	endmatrix[9][0][0][0] = 9900;//side has queen
+	endmatrix[0][0][9][0] = -9900;//opponent has queen
 }
 
 void SetScores()
 {
 	for (int x = 0; x < 64; x++)
 	{
-		PieceScore[0][0][x] = pawn_score[x];
-		PieceScore[0][1][x] = knight_score[x] + 10;
-		PieceScore[0][2][x] = bishop_score[x] + 10;
-		PieceScore[0][3][x] = rook_score[x];
-		PieceScore[0][4][x] = queen_score[x] + 60;
-		PieceScore[0][5][x] = 0;
-		PieceScore[1][0][x] = pawn_score[Flip[x]];
-		PieceScore[1][1][x] = knight_score[Flip[x]] + 10;
-		PieceScore[1][2][x] = bishop_score[Flip[x]] + 10;
-		PieceScore[1][3][x] = rook_score[Flip[x]];
-		PieceScore[1][4][x] = queen_score[Flip[x]] + 60;
-		PieceScore[1][5][x] = 0;
+		PieceScore[0][P][x] = pawn_score[x];
+		PieceScore[0][N][x] = knight_score[x] + 10;
+		PieceScore[0][B][x] = bishop_score[x] + 10;
+		PieceScore[0][R][x] = rook_score[x];
+		PieceScore[0][Q][x] = queen_score[x] + 60;
+		PieceScore[0][K][x] = 0;
+		PieceScore[1][P][x] = pawn_score[Flip[x]];
+		PieceScore[1][N][x] = knight_score[Flip[x]] + 10;
+		PieceScore[1][B][x] = bishop_score[Flip[x]] + 10;
+		PieceScore[1][R][x] = rook_score[Flip[x]];
+		PieceScore[1][Q][x] = queen_score[Flip[x]] + 60;
+		PieceScore[1][K][x] = 0;
 
 		KingScore[0][x] = king_score[x];
 		KingScore[1][x] = king_score[Flip[x]];
@@ -562,12 +526,6 @@ void SetScores()
 
 		PawnBlocked[0][x] = pawn_blocked[x];
 		PawnBlocked[1][x] = pawn_blocked[Flip[x]];
-
-		defended_passed[1][x] = defended_pp[x];
-		defended_passed[0][x] = defended_pp[Flip[x]];
-		
-		adjacent_passed[1][x] = adjacent_pp[x];
-		adjacent_passed[0][x] = adjacent_pp[Flip[x]];
 	}
 }
 
@@ -624,8 +582,6 @@ void SetKingPawnTable()
 			scale[x] -= 20;
 		else if (x < 40)
 			scale[x] -= 10;
-		//else if(x>65)
-	  //	  scale[x] = 65;
 	}
 }
 

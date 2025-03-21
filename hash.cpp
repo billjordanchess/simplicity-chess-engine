@@ -1,22 +1,11 @@
 #include "globals.h"
 
-BITBOARD Random(int x);
+void HashTest();
 
-void AddBookHash(const int s, const int score, const int type, const move_data move);
-int LookUpBook();
+move_data hash_move;
 
-int hash_start;
-int hash_dest;
-int hash_flags;
-int hash_score;
-
-void ResetHash();
 void Free();
-
 void Alg(int a, int b);
-
-int GetHashEval();
-
 void SetBit(BITBOARD& bb, int square);
 
 //Hash table with 2^16 =64000
@@ -32,11 +21,17 @@ BITBOARD pawnlock[2][64];
 
 BITBOARD clashes, bestmatches, collisions, pcollisions;
 
-const BITBOARD MAXPAWNHASH = 600000;//600000;//1200000//2<<19+1;//65536;//50000;
-const BITBOARD MAXHASH = 12000000;//16777216;//20000000;
+BITBOARD Random(int x);
 
-const int HASH = 23;
-const int PAWNHASH = 18;
+void AddBookHash(const int s, const int score, const int type, const move_data move);
+int LookUpBook();
+move_data GetHashMove();
+
+const int HASH_SIZE = 23;
+const int PAWNHASH_SIZE = 18;
+
+const BITBOARD MAXPAWNHASH = 2 << PAWNHASH_SIZE;
+const BITBOARD MAXHASH = 2 << HASH_SIZE;
 
 struct hashp
 {
@@ -46,6 +41,7 @@ struct hashp
 	char type;
 	char from;
 	char to;
+	char age;
 };
 
 hashp* hashpos[2];
@@ -58,17 +54,10 @@ struct hashpawn
 	int defence[2][3];
 	BITBOARD passed_pawns[2];
 	BITBOARD pa[2];
-	BITBOARD bp0;
-	BITBOARD bp1;
+	BITBOARD bp[2];
 };
 
 hashpawn hashpawns[MAXPAWNHASH];
-
-struct hasheval
-{
-	BITBOARD hashlock;
-	int score;
-};
 
 void RandomizeHash()
 {
@@ -76,30 +65,28 @@ void RandomizeHash()
 	for (p = 0; p < 6; p++)
 		for (x = 0; x < 64; x++)
 		{
-			hash[0][p][x] = Random(HASH);
-			hash[1][p][x] = Random(HASH);
-			lock[0][p][x] = Random(HASH);
-			lock[1][p][x] = Random(HASH);
+			hash[0][p][x] = Random(HASH_SIZE);
+			hash[1][p][x] = Random(HASH_SIZE);
+			lock[0][p][x] = Random(HASH_SIZE);
+			lock[1][p][x] = Random(HASH_SIZE);
 		}
 	hashpos[0] = new hashp[MAXHASH];
 	hashpos[1] = new hashp[MAXHASH];
 
 	for (x = 0; x < 64; x++)
 	{
-		pawnhash[0][x] = Random(PAWNHASH);
-		pawnhash[1][x] = Random(PAWNHASH);
-		pawnlock[0][x] = Random(PAWNHASH);
-		pawnlock[1][x] = Random(PAWNHASH);
-		ep_hash[x] = Random(HASH);
+		pawnhash[0][x] = Random(PAWNHASH_SIZE);
+		pawnhash[1][x] = Random(PAWNHASH_SIZE);
+		pawnlock[0][x] = Random(PAWNHASH_SIZE);
+		pawnlock[1][x] = Random(PAWNHASH_SIZE);
+		ep_hash[x] = Random(HASH_SIZE);
 	}
-	//printf(" b1 %d ",sizeof(hashpawns));
-	//_getch();
 }
 
-BITBOARD Random(int x)
+BITBOARD Random(int size)
 {
 	BITBOARD r = 0;
-	for (int y = 0; y < x; y++)//23
+	for (int y = 0; y < size; y++)
 	{
 		if (rand() % 100 < 50)
 			SetBit(r, y);
@@ -113,29 +100,6 @@ void Free()
 	delete hashpos[1];
 }
 
-void FreeAllHash()
-{
-	printf(" free hash/n");
-	hashpositions[0] = 0;
-	hashpositions[1] = 0;
-	for (int x = 0; x < MAXHASH; x++)
-		for (int y = 0; y < 2; y++)
-		{
-			hashpos[y][x].type = 0;
-			hashpos[y][x].depth = 0;
-			hashpos[y][x].score = 0;
-			hashpos[y][x].hashlock = 0;
-			//also move
-		}
-	currentkey = currentlock = 0;
-	currentpawnkey = currentpawnlock = 0;
-}
-
-void ResetHash()
-{
-	memset(hashpositions, 0, sizeof(hashpositions));
-}
-
 int GetHashScore(const int s)
 {
 	return hashpos[s][currentkey].score;
@@ -143,44 +107,46 @@ int GetHashScore(const int s)
 
 void AddHash(const int s, const int depth, const int score, const int type, const int from, const int to)
 {
-	if (hashpos[s][currentkey].hashlock == 0)
+	hashp* ptr = &hashpos[s][currentkey];
+	if (ptr->hashlock == 0)
 	{
-		hashpos[s][currentkey].hashlock = currentlock;
-		hashpos[s][currentkey].score = score;
-		hashpos[s][currentkey].depth = depth;
-		hashpos[s][currentkey].type = type;
-		hashpos[s][currentkey].from = from;
-		hashpos[s][currentkey].to = to;
+		ptr->hashlock = currentlock;
+		ptr->score = score;
+		ptr->depth = depth;
+		ptr->type = type;
+		ptr->from = from;
+		ptr->to = to;
+		ptr->age = turn;
 
 		hashpositions[s]++;
 
 		return;
 	}
 
-	if (hashpos[s][currentkey].hashlock == currentlock)
+	if (ptr->hashlock == currentlock)
 	{
-		//if (hashpos[s][currentkey].type == 4)//book move
-		//	return;
-		if (depth < hashpos[s][currentkey].depth)
+		if (depth < ptr->depth)
 			return;
-		hashpos[s][currentkey].hashlock = currentlock;
-		hashpos[s][currentkey].score = score;
-		hashpos[s][currentkey].depth = depth;
-		hashpos[s][currentkey].type = type;
-		hashpos[s][currentkey].from = from;
-		hashpos[s][currentkey].to = to;
+		ptr->score = score;
+		ptr->depth = depth;
+		ptr->type = type;
+		ptr->from = from;
+		ptr->to = to;
+		ptr->age = turn;
 	}
 	else
-		//position already stored
 	{
 		collisions++;
+		if (ptr->type == EXACT && type != EXACT)
+			return;
 
-		hashpos[s][currentkey].hashlock = currentlock;
-		hashpos[s][currentkey].score = score;
-		hashpos[s][currentkey].depth = depth;
-		hashpos[s][currentkey].type = type;
-		hashpos[s][currentkey].from = from;
-		hashpos[s][currentkey].to = to;
+		ptr->hashlock = currentlock;
+		ptr->score = score;
+		ptr->depth = depth;
+		ptr->type = type;
+		ptr->from = from;
+		ptr->to = to;
+		ptr->age = turn;
 	}
 	return;
 }
@@ -204,12 +170,12 @@ BITBOARD GetLock()
 	BITBOARD loc = 0;
 	for (int x = 0; x < 64; x++)
 	{
-		if (b[x] != 6)
+		if (b[x] != EMPTY)
 		{
-			if (bit_units[0] & mask[x]) 
-			loc ^= lock[0][b[x]][x];
-			if (bit_units[1] & mask[x]) 
-			loc ^= lock[1][b[x]][x];
+			if (bit_units[0] & mask[x])
+				loc ^= lock[0][b[x]][x];
+			if (bit_units[1] & mask[x])
+				loc ^= lock[1][b[x]][x];
 		}
 	}
 	return loc;
@@ -220,74 +186,57 @@ BITBOARD GetKey()
 	BITBOARD key = 0;
 	for (int x = 0; x < 64; x++)
 	{
-		if (b[x] != 6)
+		if (b[x] != EMPTY)
 		{
 			if (bit_units[0] & mask[x])
-			key ^= hash[0][b[x]][x];
-			if (bit_units[1] & mask[x]) 
-			key ^= hash[1][b[x]][x];
+				key ^= hash[0][b[x]][x];
+			if (bit_units[1] & mask[x])
+				key ^= hash[1][b[x]][x];
 		}
 	}
 	return key;
 }
 
-int LookUpBook(const int s)
-{
-	if (hashpos[s][currentkey].hashlock == currentlock && hashpos[s][currentkey].type == 4)
-	{
-		hash_start = hashpos[s][currentkey].from;
-		hash_dest = hashpos[s][currentkey].to;
-		return 1;
-	}
-	hash_start = 0;
-	hash_dest = 0;
-	hash_flags = 0;
-	return 0;
-}
-
 int LookUp(const int s, const int depth, const int alpha, const int beta)
 {
-	if (hashpos[s][currentkey].hashlock != currentlock)
+	hashp* ptr = &hashpos[s][currentkey];
+	if (ptr->hashlock != currentlock)
 	{
 		return -1;
 	}
-	hash_start = hashpos[s][currentkey].from;
-	hash_dest = hashpos[s][currentkey].to;
-	//hash_flags = hashpos[s][currentkey].
+	hash_move.from = ptr->from;
+	hash_move.to = ptr->to;
 
-	if (depth > hashpos[s][currentkey].depth)
+	if (depth > ptr->depth)
 	{
-		if (depth == hashpos[s][currentkey].depth + 1)
+		if (depth == ptr->depth + 1)
 		{
-			if (hashpos[s][currentkey].type == BETA && hashpos[s][currentkey].score >= beta)
+			if (ptr->type == BETA && ptr->score >= beta)
 				return(BETA);
-			if (hashpos[s][currentkey].type == ALPHA && hashpos[s][currentkey].score <= alpha) 
+			if (ptr->type == ALPHA && ptr->score <= alpha)
 			{
 				return(ALPHA);
 			}
 		}
 		return 0;
 	}
-
-	int type = hashpos[s][currentkey].type;
-
-	if (type == BETA)
+	if (ptr->type == BETA)
 	{
-		if (hashpos[s][currentkey].score >= beta)
+		if (ptr->score >= beta)
 			return(BETA);
-		if (hashpos[s][currentkey].score >= 9900)
+		if (ptr->score >= 9900)
 			return(BETA);
 		return 0;
 	}
-	else if (type == ALPHA)
+	else if (ptr->type == ALPHA)
 	{
-		if (hashpos[s][currentkey].score <= alpha)//?
+		if (ptr->score <= alpha)
 			return(ALPHA);
 		return 0;
 	}
-	else if (type == EXACT)
+	else if (ptr->type == EXACT)
 	{
-		hash_score = hashpos[s][currentkey].score;
+		hash_move.score = ptr->score;
 		return(EXACT);
 	}
 	return 0;
@@ -295,75 +244,28 @@ int LookUp(const int s, const int depth, const int alpha, const int beta)
 
 int LookUp2(const int s)
 {
-	if (hashpos[s][currentkey].hashlock != currentlock)
+	hashp* ptr = &hashpos[s][currentkey];
+	if (ptr->hashlock != currentlock)
 	{
 		return -1;
 	}
-	hash_score = hashpos[s][currentkey].score;
-	hash_start = hashpos[s][currentkey].from;
-	hash_dest = hashpos[s][currentkey].to;
+	hash_move.score = ptr->score;
+	hash_move.from = ptr->from;
+	hash_move.to = ptr->to;
 	return 0;
-}
-
-void AddBookHash(const int s, const int score, const int type, move_data move)
-{
-	BITBOARD key = currentkey;
-
-	if (hashpos[s][key].score == 0)//hash entry is empty
-	{
-		hashpos[s][key].hashlock = currentlock;
-		hashpos[s][key].score = score;
-		hashpos[s][key].depth = 0;
-		hashpos[s][key].type = 4;
-		hashpos[s][key].from = move.from;
-		hashpos[s][key].to = move.to;
-
-		hashpositions[s]++;
-
-		return;
-	}
-
-	if (hashpos[s][key].hashlock == currentlock)
-	{
-		if (Random(100) > hashpos[s][key].score)
-		{
-			hashpos[s][key].hashlock = currentlock;
-			hashpos[s][key].score = score;
-			hashpos[s][key].depth = 0;
-			hashpos[s][key].type = type;
-			hashpos[s][key].from = move.from;
-			hashpos[s][key].to = move.to;
-		}
-	}
-	else
-		//position already stored
-	{
-		//if(score > hashpos[s][key].score)
-		if (Random(100) > hashpos[s][key].score)
-		{
-			hashpos[s][key].hashlock = currentlock;
-			hashpos[s][key].score = score;
-			hashpos[s][key].depth = 0;
-			hashpos[s][key].type = type;
-			hashpos[s][key].from = move.from;
-			hashpos[s][key].to = move.to;
-		}
-		collisions++;
-	}
-	return;
 }
 
 BITBOARD GetPawnKey()
 {
-	int c=0;
+	int colour = 0;
 	BITBOARD key = 0;
 	for (int x = 0; x < 64; x++)
 	{
-		if (b[x] != 6)
+		if (b[x] != EMPTY)
 		{
-			if (bit_units[0] & mask[x]) c = 0;
-			if (bit_units[1] & mask[x]) c = 1;
-			key ^= pawnhash[c][x];
+			if (bit_units[0] & mask[x]) colour = 0;
+			if (bit_units[1] & mask[x]) colour = 1;
+			key ^= pawnhash[colour][x];
 		}
 	}
 	return key;
@@ -371,15 +273,15 @@ BITBOARD GetPawnKey()
 
 BITBOARD GetPawnLock()
 {
-	int c=0;
+	int colour = 0;
 	BITBOARD key = 0;
 	for (int x = 0; x < 64; x++)
 	{
-		if (b[x] != 6)
+		if (b[x] != EMPTY)
 		{
-			if (bit_units[0] & mask[x]) c = 0;
-			if (bit_units[1] & mask[x]) c = 1;
-			key ^= pawnlock[c][x];
+			if (bit_units[0] & mask[x]) colour = 0;
+			if (bit_units[1] & mask[x]) colour = 1;
+			key ^= pawnlock[colour][x];
 		}
 	}
 	return key;
@@ -387,13 +289,6 @@ BITBOARD GetPawnLock()
 
 void AddPawnHash(const int s1, const int s2, const BITBOARD p1, const BITBOARD p2)
 {
-	/*
-	if(hashpawns[currentpawnkey].hashlock!=currentpawnlock && hashpawns[currentpawnkey].hashlock!=0)
-		pcollisions++;
-	else
-		collisions++;
-hashpawns[currentpawnkey].hashlock=currentpawnlock;
-*/
 	hashpawns[currentpawnkey].score[0] = s1;
 	hashpawns[currentpawnkey].score[1] = s2;
 
@@ -411,44 +306,9 @@ bool LookUpPawn()
 	return false;
 }
 
-int GetHashPawn0()
+int GetHashPawn(const int s)
 {
-	return hashpawns[currentpawnkey].score[0];
-}
-
-int GetHashPawn1()
-{
-	return hashpawns[currentpawnkey].score[1];
-}
-
-int GetHashDefence(const int s, const int n)
-{
-	return hashpawns[currentpawnkey].defence[s][n];
-}
-
-int GetHashQueenside0()
-{
-	return hashpawns[currentpawnkey].defence[0][0];
-}
-
-int GetHashQueenside1()
-{
-	return hashpawns[currentpawnkey].defence[1][0];
-}
-
-int GetHashKingside(const int s)
-{
-	return hashpawns[currentpawnkey].defence[s][1];
-}
-
-int GetHashKingside0()
-{
-	return hashpawns[currentpawnkey].defence[0][1];
-}
-
-int GetHashKingside1()
-{
-	return hashpawns[currentpawnkey].defence[1][1];
+	return hashpawns[currentpawnkey].score[s];
 }
 
 BITBOARD GetHashPassed(const int s)
@@ -456,34 +316,14 @@ BITBOARD GetHashPassed(const int s)
 	return hashpawns[currentpawnkey].passed_pawns[s];
 }
 
-BITBOARD GetHashPassed0()
+int GetHashDefence(const int s, const int n)
 {
-	return hashpawns[currentpawnkey].passed_pawns[0];
+	return hashpawns[currentpawnkey].defence[s][n];
 }
 
-BITBOARD GetHashPassed1()
+void AddHashbp(const int s, const BITBOARD bp)
 {
-	return hashpawns[currentpawnkey].passed_pawns[1];
-}
-
-BITBOARD GetHashbp0()
-{
-	return hashpawns[currentpawnkey].bp0;
-}
-
-BITBOARD GetHashbp1()
-{
-	return hashpawns[currentpawnkey].bp1;
-}
-
-void AddHashbp0(const BITBOARD bp)
-{
-	hashpawns[currentpawnkey].bp0 = bp;
-}
-
-void AddHashbp1(const BITBOARD bp)
-{
-	hashpawns[currentpawnkey].bp1 = bp;
+	hashpawns[currentpawnkey].bp[s] = bp;
 }
 
 void AddPawnKey(const int s, const int x)
@@ -510,12 +350,30 @@ void AddQueenHash(const int s, const int value)
 	hashpawns[currentpawnkey].defence[s][0] = value;
 }
 
+void AddPawnAttackHash(const int s, const BITBOARD value)
+{
+	hashpawns[currentpawnkey].pa[s] = value;
+}
+
 BITBOARD GetHashPawnAttacks(const int s)
 {
 	return hashpawns[currentpawnkey].pa[s];
 }
 
-void AddPawnAttackHash(const int s, const BITBOARD value)
+move_data GetHashMove()
 {
-	hashpawns[currentpawnkey].pa[s] = value;
+	return hash_move;
+}
+
+void HashTest()
+{
+	/*
+if(hashpos[1][6495712].from == D5 && hashpos[1][6495712].to==C4)
+{
+	Alg(hashpos[1][6495712].from,hashpos[1][6495712].to);
+	z();
+	//ShowAll(ply);
+	nodes=nodes;
+}
+*/
 }

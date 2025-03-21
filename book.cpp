@@ -1,7 +1,5 @@
 #include "globals.h"
 
-extern int hash_start, hash_dest;
-
 char lines[100][80];
 move_data book_list[GEN_STACK];
 int total2;
@@ -41,17 +39,17 @@ int Book()
 	if (hply > 5)
 		return 0;
 	int r;
-	hash_start = -1;
+	hash_move.from = -1;
 	r = Random(100);
 	if (hply == 0)
 	{
 		if (r < 50)
 		{
-			hash_start = D2; hash_dest = D4;
+			hash_move.from = D2; hash_move.to = D4;
 		}
 		else
 		{
-			hash_start = E2; hash_dest = E4;
+			hash_move.from = E2; hash_move.to = E4;
 		}
 		return 1;
 	}
@@ -71,8 +69,8 @@ int Book()
 			dest += ((lines[x][y + 3] - '0') - 1) * 8;
 			bb[dest] = bb[start];
 			bc[dest] = bc[start];
-			bb[start] = 6;
-			bc[start] = 6;
+			bb[start] = EMPTY;
+			bc[start] = EMPTY;
 		}
 		match = 1;
 		for (int z = 0; z < 64; z++)
@@ -105,8 +103,8 @@ int Book()
 	else
 	{
 		r = Random(m);
-		hash_start = matches[r][0];
-		hash_dest = matches[r][1];
+		hash_move.from = matches[r][0];
+		hash_move.to = matches[r][1];
 		return 1;
 	}
 }
@@ -114,6 +112,7 @@ int Book()
 void LoadBook()
 {
 	int c = 0;
+	strcpy_s(lines[c++], "g1f3 d7d5 g2g3 g8f6 f1g2 c7c6 d2d3 c8f5 ");
 	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 b1c3 g8f6 e4e5 f6d7 ");
 	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 b1c3 g8f6 c1g5 f8e7 ");
 	strcpy_s(lines[c++], "e2e4 e7e6 d2d4 d7d5 b1c3 g8f6 c1g5 f8b4 ");
@@ -197,7 +196,6 @@ void LoadBook()
 	strcpy_s(lines[c++], "d2d4 g8f6 c2c4 g7g6 b1c3 f8g7 g1f3 d7d6 ");
 	strcpy_s(lines[c++], "d2d4 g8f6 g1f3 g7g6 c1f4 f8g7 e2e3 d7d6 ");
 	strcpy_s(lines[c++], "d2d4 f7f5 c2c4 g8f6 g1f3 e7e6 g2g3 d7d5 ");
-	strcpy_s(lines[c++], "d2d4 f7f5 c2c4 g8f6 g1f3 e7e6 g2g3 d7d6 ");
 	strcpy_s(lines[c++], "d2d4 d7d5 g1f3 g8f6 e2e3 g7g6 f1e2 f8g7 ");
 
 	total2 = c;

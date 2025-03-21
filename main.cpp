@@ -10,6 +10,10 @@
 
 #include "globals.h"
 
+void GenCheck();
+void GenCaptures();
+void GenNon();
+
 void ShowHelp();
 void SetUp();
 void xboard();
@@ -44,19 +48,17 @@ int turn = 0;
 
 int collisions;
 
-void PrintResult();
+void DisplayResult();
 void StartGame();
 void SetMaterial();
 void SetBits();
 void Free();
 
-extern int hash_start, hash_dest;
-
 int main()
 {
-	printf("Simplicity Chess Engine\n");
-	printf("Version 1.3, 10/10/21\n");
-	printf("Bill Jordan 2021\n");
+	printf("Simplicity Chess Engine 1.5\n");
+	printf("Version new reduce , 21/3/25\n");
+	printf("Bill Jordan 2025\n");
 	printf("FIDE Master and 2021 state champion.\n");
 	printf("I have published a number of chess books\n");
 	printf("including books on chess programming.\n");
@@ -74,7 +76,6 @@ int main()
 	int turns = 0;
 	int t;
 	int lookup;
-	int check;
 
 	double nps;
 
@@ -86,8 +87,8 @@ int main()
 	SetUp();
 	srand(time(NULL));
 
-	check = Check(xside, pieces[side][5][0]);
-	Gen(check);
+
+	GenCheck();
 	computer_side = EMPTY;
 	player[0] = 0;
 	player[1] = 0;
@@ -99,26 +100,26 @@ int main()
 		if (side == computer_side)
 		{
 			player[side] = 1;
-			think();
+			Think(fixed_time);
 			turns++;
 
 			currentkey = GetKey();
 			currentlock = GetLock();
 			lookup = LookUp2(side);
 
-			if (hash_start != 0 || hash_dest != 0)
+			if (hash_move.from != 0 || hash_move.to != 0)
 			{
-				hash_start = hash_start;
-				hash_dest = hash_dest;
-				Alg(hash_start, hash_dest); printf("\n");
+				hash_move.from = hash_move.from;
+				hash_move.to = hash_move.to;
+				Alg(hash_move.from, hash_move.to); printf("\n");
 			}
 			else
 			{
 				printf("(no legal moves)\n");
 				computer_side = EMPTY;
-				print_board();
-				check = Check(xside, pieces[side][5][0]);
-				Gen(check);
+				DisplayBoard();
+				
+				GenCheck();
 				continue;
 			}
 			printf(" collisions %d ", collisions);
@@ -128,8 +129,8 @@ int main()
 			//if (ply == 0)
 				;//	ShowAllEval(0);
 
-			printf("Computer's move: %s\n", MoveString(hash_start, hash_dest, 0)); printf("\n");
-			MakeMove(hash_start, hash_dest,0);
+			printf("Computer's move: %s\n", MoveString(hash_move.from, hash_move.to, 0)); printf("\n");
+			MakeMove(hash_move.from, hash_move.to,0);
 			
 			printf("\n cut nodes %d ", cut_nodes);
 			printf(" first nodes %d ", first_nodes);
@@ -154,11 +155,11 @@ int main()
 			ply = 0;
 
 			first_move[0] = 0;
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
-			PrintResult();
+			
+			GenCheck();
+			DisplayResult();
 			printf(" turn "); printf("%d", turn++);
-			print_board();
+			DisplayBoard();
 			continue;
 		}
 		printf("Enter move or command> ");
@@ -167,13 +168,13 @@ int main()
 
 		if (!strcmp(s, "d"))
 		{
-			print_board();
+			DisplayBoard();
 			continue;
 		}
 		if (!strcmp(s, "f"))
 		{
 			flip = 1 - flip;
-			print_board();
+			DisplayBoard();
 			continue;
 		}
 		if (!strcmp(s, "go"))
@@ -189,9 +190,9 @@ int main()
 		if (!strcmp(s, "moves"))
 		{
 			printf("Moves \n");
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
-			for (int i = 0; i < first_move[1]; ++i)
+			
+			GenCheck();
+			for (int i = 0; i < first_move[1]; i++)
 			{
 				printf("%s\n", MoveString(move_list[i].from, move_list[i].to, 0));
 			}
@@ -258,8 +259,8 @@ int main()
 			ply = 0;
 			if (first_move[0] != 0)
 				first_move[0] = 0;
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
+			
+			GenCheck();
 			continue;
 		}
 		if (!strcmp(s, "xboard"))
@@ -270,8 +271,8 @@ int main()
 
 		ply = 0;
 		first_move[0] = 0;
-		check = Check(xside, pieces[side][5][0]);
-		Gen(check);
+		
+		GenCheck();
 		m = ParseMove(s);
 		//Attack 26/4/21
 		if (m == -1 || !MakeMove(move_list[m].from, move_list[m].to,0))
@@ -312,23 +313,15 @@ int ParseMove(char* s)
 	dest = s[2] - 'a';
 	dest += ((s[3] - '0') - 1) * 8;
 
-	for (i = 0; i < first_move[1]; ++i)
+	for (i = 0; i < first_move[1]; i++)
 		if (move_list[i].from == start && move_list[i].to == dest)
 		{
-			/*
-			if (s[4] == 'n' || s[4] == 'N')
-				move_list[i].promote = 1;
-			if (s[4] == 'b' || s[4] == 'B')
-				move_list[i].promote = 2;
-			else if (s[4] == 'r' || s[4] == 'R')
-				move_list[i].promote = 3;
-				*/
 			return i;
 		}
 	return -1;
 }
 
-void print_board()
+void DisplayBoard()
 {
 	HANDLE hConsole;
 	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -366,9 +359,9 @@ void print_board()
 			break;
 		case 0:
 			if (board_color[i] == 0)
-				text = 126;
+				text = 124;
 			else
-				text = 46;
+				text = 36;
 			SetConsoleTextAttribute(hConsole, text);
 			printf(" %c", piece_char[b[i]]);
 			SetConsoleTextAttribute(hConsole, 15);
@@ -389,7 +382,7 @@ void print_board()
 			break;
 
 		}
-		if ((bit_all & mask[i]) && b[i] == 6)
+		if ((bit_all & mask[i]) && b[i] == EMPTY)
 			if (x == 0)
 				printf(" %d", c);
 			else
@@ -424,7 +417,6 @@ void xboard()
 	int post = 0;
 	int analyze = 0;
 	int lookup;
-	int check;
 	char sFen[256];
 	char sText[256];
 
@@ -439,31 +431,31 @@ void xboard()
 		fflush(stdout);
 		if (side == computer_side)
 		{
-			think();
+			Think(fixed_time);
 			SetMaterial();
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
+			
+			GenCheck();
 			currentkey = GetKey();
 			currentlock = GetLock();
 			lookup = LookUp2(side);
 
-			if (hash_start != 0 || hash_dest != 0)
+			if (hash_move.from != 0 || hash_move.to != 0)
 			{
-				hash_start = hash_start;
-				hash_dest = hash_dest;
+				hash_move.from = hash_move.from;
+				hash_move.to = hash_move.to;
 			}
 			else
 				printf(" lookup=0 ");
-			move_list[0].from = hash_start;
-			move_list[0].to = hash_dest;
-			printf("move %s\n", MoveString(hash_start, hash_dest, 0));
+			move_list[0].from = hash_move.from;
+			move_list[0].to = hash_move.to;
+			printf("move %s\n", MoveString(hash_move.from, hash_move.to, 0));
 
-			MakeMove(hash_start, hash_dest,0);
+			MakeMove(hash_move.from, hash_move.to,0);
 
 			ply = 0;
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
-			PrintResult();
+			
+			GenCheck();
+			DisplayResult();
 			continue;
 		}
 		if (!fgets(line, 256, stdin))
@@ -490,8 +482,8 @@ void xboard()
 		{
 			side = 0;
 			xside = 1;
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
+			
+			GenCheck();
 			computer_side = 1;
 			continue;
 		}
@@ -499,8 +491,8 @@ void xboard()
 		{
 			side = 1;
 			xside = 0;
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
+			
+			GenCheck();
 			computer_side = 0;
 			continue;
 		}
@@ -550,13 +542,13 @@ void xboard()
 			continue;
 		if (!strcmp(command, "hint"))
 		{
-			think();
+			Think(fixed_time);
 			currentkey = GetKey();
 			currentlock = GetLock();
 			lookup = LookUp2(side);
-			if (hash_start == 0 && hash_dest == 0)
+			if (hash_move.from == 0 && hash_move.to == 0)
 				continue;
-			printf("Hint: %s\n", MoveString(hash_start, hash_dest, 0));
+			printf("Hint: %s\n", MoveString(hash_move.from, hash_move.to, 0));
 			continue;
 		}
 		if (!strcmp(command, "undo"))
@@ -565,8 +557,8 @@ void xboard()
 				continue;
 			UnMakeMove();
 			ply = 0;
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
+			
+			GenCheck();
 			continue;
 		}
 		if (!strcmp(command, "remove"))
@@ -576,8 +568,8 @@ void xboard()
 			UnMakeMove();
 			UnMakeMove();
 			ply = 0;
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
+			
+			GenCheck();
 			continue;
 		}
 		if (!strcmp(command, "post"))
@@ -592,24 +584,22 @@ void xboard()
 		}
 		if (!strcmp(command, "d"))
 		{
-			print_board();
+			DisplayBoard();
 			continue;
 		}
 		if (!strcmp(command, "sb"))
 		{
 			sFen[0] = 0;
-			strcat_s(sFen, "c:\\users\\bill\\desktop\\bscp\\");//
+			strcat_s(sFen, "c:\\users\\bill\\desktop\\bscp\\");//change this
 			scanf("%s", sText);
 			strcat_s(sFen, sText);
 			strcat_s(sFen, ".fen");
 			LoadDiagram(sFen, 1);
-			print_board();
+			DisplayBoard();
 			continue;
 		}
-
-		first_move[0] = 0;
-		check = Check(xside, pieces[side][5][0]);
-		Gen(check);
+		
+		GenCheck();
 
 		m = ParseMove(line);
 		if (m == -1 || !MakeMove(move_list[m].from, move_list[m].to,0))
@@ -617,30 +607,29 @@ void xboard()
 		else
 		{
 			ply = 0;
-			check = Check(xside, pieces[side][5][0]);
-			Gen(check);
-			PrintResult();
+			
+			GenCheck();
+			DisplayResult();
 		}
 	}
 }
 
-void PrintResult()
+void DisplayResult()
 {
-	int i; i = 0;
+	int i = 0;
 	int flag = 0;
-	int check;
 
 	SetMaterial();
-	check = Check(xside, pieces[side][5][0]);
-	Gen(check);
-	for (i = 0; i < first_move[1]; ++i)
+	
+	GenCheck();
+	for (i = 0; i < first_move[1]; i++)
 		if (MakeMove(move_list[i].from,move_list[i].to, move_list[i].flags))
 		{
 			UnMakeMove();
 			flag=1;
 			break;
 		}
-	if (pawn_mat[0] == 0 && pawn_mat[1] == 0 && piece_mat[0] <= 300 && piece_mat[1] <= 300)
+	if (pawn_mat[0] == 0 && pawn_mat[1] == 0 && piece_mat[0] <= 3 && piece_mat[1] <= 3)
 	{
 		printf("1/2-1/2 {Stalemate}\n");
 
@@ -650,10 +639,10 @@ void PrintResult()
 	}
 	if (i == first_move[1] && flag == 0)
 	{
-		print_board();
+		DisplayBoard();
 		printf(" end of game ");
 
-		if (Attack(xside, pieces[side][5][0]))
+		if (Attack(xside, pieces[side][K][0]))
 		{
 			if (side == 0)
 			{
@@ -671,7 +660,7 @@ void PrintResult()
 		StartGame();
 		computer_side = EMPTY;
 	}
-	else if (reps() >= 3)
+	else if (Reps() >= 3)
 	{
 		printf("1/2-1/2 {Draw by repetition}\n");
 		StartGame();
@@ -685,7 +674,7 @@ void PrintResult()
 	}
 }
 
-int reps()
+int Reps()
 {
 	int r = 0;
 
@@ -718,7 +707,7 @@ int LoadDiagram(char* file, int num)
 	NewPosition();
 	for (int i = 0; i < 64; i++)
 	{
-		b[i] = 6;
+		b[i] = EMPTY;
 	}
 	memset(bit_pieces, 0, sizeof(bit_pieces));
 	memset(bit_units, 0, sizeof(bit_units));
@@ -738,18 +727,18 @@ int LoadDiagram(char* file, int num)
 
 		switch (ts[c])
 		{
-		case 'K': AddPiece(0, 5, j); i++; break;
-		case 'Q': AddPiece(0, 4, j); i++; break;
-		case 'R': AddPiece(0, 3, j); i++; break;
-		case 'B': AddPiece(0, 2, j); i++; break;
-		case 'N': AddPiece(0, 1, j); i++; break;
-		case 'P': AddPiece(0, 0, j); i++; break;
-		case 'k': AddPiece(1, 5, j); i++; break;
-		case 'q': AddPiece(1, 4, j); i++; break;
-		case 'r': AddPiece(1, 3, j); i++; break; 
-		case 'b': AddPiece(1, 2, j); i++; break;
-		case 'n': AddPiece(1, 1, j); i++; break;
-		case 'p': AddPiece(1, 0, j); i++; break;
+		case 'K': AddPiece(0, K, j); i++; break;
+		case 'Q': AddPiece(0, Q, j); i++; break;
+		case 'R': AddPiece(0, R, j); i++; break;
+		case 'B': AddPiece(0, B, j); i++; break;
+		case 'N': AddPiece(0, N, j); i++; break;
+		case 'P': AddPiece(0, P, j); i++; break;
+		case 'k': AddPiece(1, K, j); i++; break;
+		case 'q': AddPiece(1, Q, j); i++; break;
+		case 'r': AddPiece(1, R, j); i++; break; 
+		case 'b': AddPiece(1, B, j); i++; break;
+		case 'n': AddPiece(1, N, j); i++; break;
+		case 'p': AddPiece(1, P, j); i++; break;
 		default:
 			break;
 		}
@@ -786,15 +775,9 @@ int LoadDiagram(char* file, int num)
 		}
 		c++;
 	}
-	if (bit_pieces[0][K] & mask[E1]) castle |= 1; 
-	if (bit_pieces[0][K] & mask[E1]) castle |= 2; 
-	if (bit_pieces[1][K] & mask[E8]) castle |= 4; 
-	if (bit_pieces[1][K] & mask[E8]) castle |= 8; 
-	castle = 0;//
-	//patch
 
 	CloseDiagram();
-	print_board();
+	DisplayBoard();
 	printf(" diagram # %d \n", num + count);
 	count++;
 	if (side == 0)
@@ -807,7 +790,6 @@ int LoadDiagram(char* file, int num)
 	currentpawnkey = GetPawnKey();
 	currentpawnlock = GetPawnLock();
 	hply = 10;
-	//book = 0;
 	return 0;
 }
 
@@ -829,7 +811,7 @@ void ShowHelp()
 	printf("off - Turns the computer player off.\n");
 	printf("on or p - The computer plays a move.\n");
 	printf("sb - Loads a fen diagram.\n");
-	printf("sd - Sets the search depth.\n");
+	printf("sd - Sets the Search depth.\n");
 	printf("st - Sets the time limit per move in seconds.\n");
 	printf("sw - Switches sides.\n");
 	printf("quit - Quits the program.\n");
@@ -846,13 +828,13 @@ void SetMaterial()
 	piece_mat[1] = 0;
 	for (int x = 0; x < 64; x++)
 	{
-		if (b[x] < 6)
+		if (b[x] != EMPTY)
 		{
 			if (bit_units[0] & mask[x])
 				c = 0;
 			else
 				c = 1;
-			if (b[x] == 0)
+			if (b[x] == P)
 				pawn_mat[c]++;
 			else
 				piece_mat[c] += piece_value[b[x]];
@@ -903,3 +885,106 @@ char* MoveString(int start, int dest, int promote)
 			row[dest] + 1);
 	return str;
 }
+
+void GenCheck()
+{
+	int check = Check(xside, pieces[side][K][0]);
+	first_move[ply + 1] = first_move[ply];
+	if(check > -1)
+		Evasion(check);
+	else
+	{
+		GenCaptures();
+		GenNon();
+	}
+}
+
+/*
+#include <iostream>
+#include <sstream>
+#include <string>
+
+void SetBoardToStartingPosition();
+void SetBoardFromFEN(const std::string& fen);
+void MakeMove(const std::string& move);
+std::string SearchBestMove(int depth, int movetime);
+void WinBoardLoop(); // Your existing WinBoard code
+
+void HandleUciPosition(const std::string& command) {
+    std::istringstream ss(command);
+    std::string token;
+    ss >> token; // "position"
+    
+    std::string positionType;
+    ss >> positionType; // "startpos" or "fen"
+
+    if (positionType == "startpos") {
+        SetBoardToStartingPosition();
+    } else if (positionType == "fen") {
+        std::string fen;
+        while (ss >> token && token != "moves") {
+            fen += token + " ";
+        }
+        SetBoardFromFEN(fen);
+    }
+
+    // Read moves (if any)
+    while (ss >> token) {
+        MakeMove(token);
+    }
+}
+
+void HandleUciGo(const std::string& command) {
+    int depth = -1;
+    int movetime = -1;
+
+    std::istringstream ss(command);
+    std::string token;
+    ss >> token; // "go"
+
+    while (ss >> token) {
+        if (token == "depth") {
+            ss >> depth;
+        } else if (token == "movetime") {
+            ss >> movetime;
+        }
+    }
+
+    std::string bestMove = SearchBestMove(depth, movetime);
+    std::cout << "bestmove " << bestMove << std::endl;
+}
+
+void UciLoop() {
+    std::string input;
+    while (std::getline(std::cin, input)) {
+        if (input == "uci") {
+            std::cout << "id name MyEngine" << std::endl;
+            std::cout << "id author MyName" << std::endl;
+            std::cout << "uciok" << std::endl;
+        } else if (input == "isready") {
+            std::cout << "readyok" << std::endl;
+        } else if (input.rfind("position", 0) == 0) {
+            HandleUciPosition(input);
+        } else if (input.rfind("go", 0) == 0) {
+            HandleUciGo(input);
+        } else if (input == "stop") {
+            // Handle stopping search if necessary
+        } else if (input == "quit") {
+            break;
+        }
+    }
+}
+
+int main() {
+    std::string firstCommand;
+    std::getline(std::cin, firstCommand);
+
+    if (firstCommand == "uci") {
+        UciLoop();
+    } else {
+        WinBoardLoop(); // Default to WinBoard mode
+    }
+    return 0;
+}
+
+*/

@@ -1,13 +1,7 @@
 #include <stdlib.h>
 #include "globals.h"
 
-int MakeCapture(const int, const int, const int);
-void UnMakeCapture();
-void MakeRecapture(const int, const int);
-void UnMakeRecapture();
-
-int CaptureSearch(int alpha, int beta, int depth);
-int RecaptureSearch(int alpha, int beta, int depth);
+int GetThreat(int first, int target);
 
 #define NO_PV 0
 #define PV 1
@@ -16,40 +10,26 @@ int RecaptureSearch(int alpha, int beta, int depth);
 #define NO_NULL 0
 #define DO_NULL 1
 
+#define RANK_7 6
+#define WON_ENDGAME 9900
+#define LOST_ENDGAME -9900
+
+const int INVALID = 11111;
+
 int null_depth[48];
-
-int reduce[2][64][64];
-
-int reduction[64][64][3];
-
-int best = 0;
 
 int startmat[2];
 
 const int MAX1 = MAX_PLY - 1;
 const int MAX2 = MAX_PLY - 2;
 
-int counter[64][64][2];
+move_data counter[64][64];
 
 int currentdepth;
 
-int SetHashMove();
-void Sort2(const int from, const int last);
-
-int c1 = 0, c2 = 0;
-
 int frontier[8] = { 0,0,8,20,10,20,0 };//k as 30 june 17
 
-int BlockedPawns3(const int s);
-void SetKillers();
-void ClearKillers();
-
 move_data rootscore[100];
-
-int Sort(const int from, const int, const int);
-void checkup();
-
-void UpdateKillers(const int i, const int from, const int to, const int x, const int depth);
 
 int stats_depth[20];
 int stats_count[100];
@@ -58,27 +38,12 @@ int total_depth[20];
 
 int total_killers[2];
 
-void z();
-
-int Reduce(const int i);
-
-void DisplayPV();
-
-int killer[MAX_PLY][3];
-int killer2[MAX_PLY][3];
+move_data killer[MAX_PLY];
+move_data killer2[MAX_PLY];
 
 int deep;
 
 int c_nodes[MAX_PLY];
-
-int DrawnMaterial();
-int DrawnPawnEnding(const int s, const int xs);
-
-int qflag;
-
-int LoneKingLoses(const int s, const int xs);
-
-void SetHashCapture();
 
 #include <setjmp.h>
 jmp_buf env;
@@ -87,25 +52,50 @@ int root_score;
 
 move_data root;
 
+bool IsLegal(const int, const int);
+
 void LoadBook();
 int Book();
 
-void r();
+int Sort(const int from, const int, const int);
+void CheckUp();
+
+void SortCaptures(const int from, const int last);
+void z();
+int BlockedPawns3(const int s);
+void SetKillers();
+void ClearKillers();
+
+void GenNon();
+void SetRootScore();
+
+void ShowMoves(int);
+
+int Reduce(const int i);
+
+void DisplayPV();
+
+void UpdateKillers(const int i, const int from, const int to, const int x, const int depth);
+
+int RemoveHashMove(const int start, const int from, const int to);
+move_data GetHashMove();
 
 void SetNullDepth()
 {
 	for (int x = 0; x < 48; x++)
 	{
-		if(x<=6)
+		if (x <= 6)
 			null_depth[x] = 2;
 		else
 			null_depth[x] = 3;
 	}
 }
 
-void think()
+void Think(int fixed_time)
 {
 	int bookflag = 0;
+	int alpha, beta;
+
 	if (hply < 8)
 	{
 		if (hply == 0)
@@ -116,7 +106,7 @@ void think()
 			return;
 		}
 	}
-	int x=0;
+	int score = 0;
 
 	stop_search = false;
 
@@ -124,7 +114,7 @@ void think()
 	if (stop_search) {
 		while (ply)
 		{
-			if (ply>1 && first_move[ply - 1] == first_move[ply])
+			if (ply > 1 && first_move[ply - 1] == first_move[ply])
 			{
 				side ^= 1;
 				xside ^= 1;
@@ -132,13 +122,13 @@ void think()
 				--hply;
 			}
 			else
-			UnMakeMove();
+				UnMakeMove();
 		}
-		hash_start = root.from;
-		hash_dest = root.to;
+		hash_move.from = root.from;
+		hash_move.to = root.to;
 		return;
 	}
-	
+
 	if (fixed_time == 0)
 	{
 		if (game_list[hply - 1].capture == QVAL && b[game_list[hply - 1].to] == 4)
@@ -156,12 +146,12 @@ void think()
 		{
 			max_time = max_time / 2;
 		}
-		else if (Attack(xside, pieces[side][5][0]))
+		else if (Attack(xside, pieces[side][K][0]))
 		{
 			max_time = max_time / 2;
 		}
 	}
-	
+
 	start_time = GetTime();
 	stop_time = start_time + max_time;
 	if (max_time < 100)
@@ -175,49 +165,56 @@ void think()
 	a_nodes = 0;
 	b_nodes = 0;
 
-	SetKillers();
 	startmat[0] = piece_mat[0];
 	startmat[1] = piece_mat[1];
 
-	memset(reduction, 0, sizeof(reduction));
-	memset(c_nodes, 0, sizeof(c_nodes));
 	memset(PlyMove, 0, sizeof(PlyMove));
-	memset(history, 0, sizeof(history));
-	memset(check_history, 0, sizeof(check_history));
+
+	memset(c_nodes, 0, sizeof(c_nodes));
 	memset(stats_depth, 0, sizeof(stats_depth));
 	memset(stats_count, 0, sizeof(stats_count));
 	memset(stats_killers, 0, sizeof(stats_killers));
+
+	if (hply > 4)
+	{
+		//SetKillers();
+		//SetKillers();
+	}
+	memset(history, 0, sizeof(history));
+	memset(check_history, 0, sizeof(check_history));
 	memset(counter, 0, sizeof(counter));
-	ClearKillers();
-	
-	x = eval(-10000, 10000);
-	
+
+	score = eval(-10000, 10000);
+
 	int rs = side;
 	int rx = xside;
+	int count = 0;
+	int flag = 0;
 
-	for (int i = 1; i <= max_depth; ++i)
+	for (int i = 1; i <= max_depth; i++)
 	{
 		if (i > 1)
 		{
-			checkup();
+			CheckUp();
 			if (fixed_depth == 0)
 				if (fixed_time == 1)
 				{
 					if (GetTime() >= start_time + max_time)
 					{
 						stop_search = true;
-						hash_start = root.from;
-						hash_dest = root.to;
+						hash_move.from = root.from;
+						hash_move.to = root.to;
 						return;
 					}
 				}
 				else if (GetTime() >= start_time + max_time / 4)
 				{
 					stop_search = true;
-					hash_start = root.from;
-					hash_dest = root.to;
+					hash_move.from = root.from;
+					hash_move.to = root.to;
 					return;
 				}
+
 		}
 		currentkey = GetKey();
 		currentlock = GetLock();
@@ -226,223 +223,325 @@ void think()
 		memset(extend, 0, sizeof(extend));
 		currentmax = i;
 		deep = 0;
-		
-		x = search(-10000, 10000, i, PV, 0);		
 
-		root_score = x;
-		printf("%d %d %d %d",i * 100 + deep, x, (GetTime() - start_time) / 10, nodes);
+		if (i == 1)
+		{
+			score = Search(-10000, 10000, i, PV, 0);
+			for (int i = 0; i < first_move[1]; i++)
+			{
+				rootscore[i].from = move_list[i].from;
+				rootscore[i].to = move_list[i].to;
+				rootscore[i].score = move_list[i].score;
+			}
+		}
+		else
+		{
+			/*
+			for(int y=0;y<1;y++)
+			{
+			alpha = score - 1,
+			beta = score + 1;
+			score = Search(alpha, beta, i, PV, 0);
+			if(score>alpha && score < beta)
+				break;
+			if (score <= alpha)
+				alpha = score - 4;
+			if(beta >= score)
+				beta = score + 4;		
+			score = Search(alpha, beta, i, PV, 0);
+			if(score>alpha && score < beta)
+				break;
+			if (score <= alpha)
+				alpha = score - 16;
+			if(beta >= score)
+				beta = score + 16;		
+			score = Search(alpha, beta, i, PV, 0);
+			if(score>alpha && score < beta)
+				break;
+			if (score <= alpha)
+				alpha = score - 32;
+			if(beta >= score)
+				beta = score + 32;		
+			score = Search(alpha, beta, i, PV, 0);
+			if(score>alpha && score < beta)
+				break;
+			score = Search(-10000, 10000, i, PV, 0);
+			}
+		//*/
+			score = Search(-10000, 10000, i, PV, 0);
+		}
+
+		root_score = score;
+		printf("%d %d %d %d", i * 100 + deep, score, (GetTime() - start_time) / 10, nodes);
 		if (LookUp2(side) > -1)
 		{
 			DisplayPV();
 			printf("\n");
 			fflush(stdout);
 		}
-		LookUp2(side);
 
-		if (x > 9000 || x < -9000)
+		if (score > 9000 || score < -9000)
 		{
 			break;
 		}
 	}
 }
 
-int search(int alpha, int beta, int depth, int pvs, int null)
+void SetRootScore()
+{
+	for (int i = 0; i < first_move[1]; i++)
+	{
+		for (int j = 0; j < first_move[1]; j++)
+			if (move_list[i].from == rootscore[j].from && move_list[i].to == rootscore[j].to)
+			{
+				move_list[i].score = rootscore[j].score;
+				break;
+			}
+	}
+}
+
+int Search(int alpha, int beta, int depth, int pvs, int null)
 {
 	nodes++;
-	if (nodes % 4096 == 0 && null==1)
-		checkup();
+	if (nodes % 4096 == 0 && null == 1)
+		CheckUp();
 
-	if (ply && reps2())
+	if (ply && Reps2())
 	{
-		return 0;
+		if (alpha >= -10)
+		{
+			return alpha;
+		}
+		return -10;
 	}
-
-	//if (nodes >= 48684)//48698)
-	//	z();
+	if (pawn_mat[0] == 0 && pawn_mat[1] == 0 && game_list[hply - 1].capture != EMPTY)
+	{
+		if (endmatrix[piece_mat[side]][total[side][N]][piece_mat[xside]][total[xside][N]] == DRAWN)
+		{
+			if (alpha >= 0)
+			{
+				return alpha;
+			}
+			return 0;
+		}
+	}
+	if (piece_mat[xside] == 0 && (bit_pieces[side][R] | bit_pieces[side][Q]) && pawn_mat[xside] == 0)
+		if (piece_mat[xside] < startmat[xside] || piece_mat[side] > startmat[side])
+			return WON_ENDGAME - ply;
 
 	int pvflag = 0;
-	//prefetch();
+
 	int lookup = LookUp(side, depth, alpha, beta);
+	move_data bestmove;
+
 	if (lookup > -1)
 	{
-		if (b[hash_start] == 0 && b[hash_dest] == EMPTY && col[hash_start] != col[hash_dest])
+		bestmove = GetHashMove();
+		if((mask[bestmove.from] & bit_units[side]) == 0 ||
+			(mask[bestmove.to] & bit_units[side]) ||
+			IsLegal(bestmove.from,bestmove.to) == 0)
 		{
-			if (first_move[ply - 1] == first_move[ply])
-			{
-				lookup = -1;
-			}
+			lookup = -1;
 		}
+		if(b[bestmove.from]==6)
+		{
+			//printf("\nsearch ");
+			//Alg(bestmove.from,bestmove.to);
+			//z();
+			lookup = -1;
+		}
+	}
+	
+	if (lookup > -1)
+	{
 		if (lookup == BETA)
 		{
 			return beta;
 		}
 		if (lookup == ALPHA)
-			 return alpha;
+			return alpha;
+
 		if (lookup == EXACT)
 		{
-			if (hash_score >= beta)
+			if (hash_move.score >= beta)
 			{
-				alpha = hash_score;
+				alpha = hash_move.score;
 			}
 			if (alpha >= beta)
-			   return beta;
+				return beta;
 			else
 			{
 				pvflag = 1;
 				PlyMove[ply] = PV;
-				//z();
 			}
 		}
+		bestmove.flags = 0;
+		bestmove.score = HASH_SCORE;
 	}
+
 	if (depth < 1)
 	{
-		return quiesce(alpha, beta, 0);
+		return QuietSearch(alpha, beta, 0);
 	}
 
 	if (ply > MAX2)
 		return eval(alpha, beta);
 
-	int x;
-	
-	int check = Check(xside, pieces[side][5][0]);
-	
-	drawn = 0;
-	int ev1 = eval(alpha, beta);
-	
-	if (drawn == 1)
-	{
-		if (ply > 1)
-			return 0;
-	}
-	
 	currentdepth = depth;
-	//*
-	if ( depth > 2
-    &&   null 
-    &&   !pvs
-    &&   ev1 > beta 
-    &&   piece_mat[side] > 500 
-    &&   check < 0
-	&&   max_time > 100)
-    {
-		first_move[ply + 1] = first_move[ply];
-        side ^= 1;
-		xside ^= 1;
-		ply++; hply++;
+	int x;
+	int check = Check(xside, pieces[side][K][0]);
+	int ev1 = INVALID;
 
-        x = -search( -beta, -beta+1,  depth - null_depth[depth] - 1, NO_PV, NO_NULL);
-	
-		side ^= 1;
-		xside ^= 1;
+	if (depth > 2
+		&& null
+		&& !pvs
+		&& piece_mat[side] > 500
+		&& check < 0
+		&& max_time > 100)
+	{
+		ev1 = eval(alpha, beta);
+		if (ev1 > beta)
+		{
+			first_move[ply + 1] = first_move[ply];
+			side ^= 1;
+			xside ^= 1;
+			ply++; hply++;
 
-		ply--; hply--;
-		checkup();
-		if (x >= beta)
-		{
-			return beta;
+			x = -Search(-beta, -beta + 1, depth - null_depth[depth] - 1, NO_PV, NO_NULL);
+
+			side ^= 1;
+			xside ^= 1;
+
+			ply--; hply--;
+			CheckUp();
+			if (x >= beta)
+			{
+				return beta;
+			}
+			if (x >= 9000)
+			{
+				return x;
+			}
 		}
-		if (x >= 9000)
-		{
-			return x;
-		}
-    }
-	//*/
+	}
+
 	int count = 0;
-	int top = HASH_SCORE;
-	int total_count = 0;
-	int d;
 	int initial_alpha = alpha;
-
-	move_data bestmove;
-	int bestscore = -10000;
-
-	a_nodes += first_move[ply + 1] - first_move[ply];
-	c_nodes[ply] = 0;
-	int last, from, to, flags, ev;
-	ev = -10000;
-
-	int k0 = killer[ply][0];
-	int k1 = killer[ply][1];
-	int k20 = killer2[ply][0];
-	int k21 = killer2[ply][1];
-	int k22 = counter[game_list[hply - 1].from][game_list[hply - 1].to][0];
-	int k23 = counter[game_list[hply - 1].from][game_list[hply - 1].to][1];
-
-	int h2 = history[k0][k1];
-	int h3 = history[k20][k21];
-	int h4 = history[k22][k23];
-
-	history[k0][k1] = KILLER_SCORE;
-	history[k20][k21] = KILLER_SCORE;
-	history[k22][k23] = COUNTER_SCORE;
-	
-	Gen(check);
-
+	int bestscore = -20000;//
 	int first = first_move[ply];
-	last = first_move[ply + 1];
-	bestmove = move_list[first];
+	int from, to, flags;
+
+	first_move[ply + 1] = first_move[ply];
+
+	move_data firstmove;
+
 	if (lookup > -1)
 	{
-		if (SetHashMove() == 0)
-		{
-			lookup = -1;
-		}
-	}
+		bestmove = GetHashMove();
+		from = bestmove.from;
+		to = bestmove.to;
+		flags = 0;
 
-	history[k0][k1] = h2;
-	history[k20][k21] = h3;
-	history[k22][k23] = h4;
-	
-	if (ply == 0)
-	{
-		for (int i = 0; i < first_move[1]; i++)
+		move_list[first].flags = flags;
+		move_list[first].from = from;
+		move_list[first].to = to;
+		move_list[first].score = HASH_SCORE;
+		first_move[ply + 1] = first_move[ply] + 1;
+
+		if (MakeMove(from, to, flags))
 		{
-			for (int j = 0; j < first_move[1]; j++)
-				if (move_list[i].from == rootscore[j].from && move_list[i].to == rootscore[j].to)
-				{
-					if (move_list[i].score < HASH_SCORE)
-					{
-						if (rootscore[j].score > move_list[i].score)
-							move_list[i].score = rootscore[j].score;
-					}
-					else
-						rootscore[j].score = HASH_SCORE2 + currentmax;
-				}
+			count++;
+			if (check > -1)
+			{
+				x = -Search(-beta, -alpha, depth, pvs, DO_NULL);
+			}
+			else
+				x = -Search(-beta, -alpha, depth - 1, pvs, DO_NULL);
+
+			UnMakeMove();
+
+		if (x > alpha)
+		{
+			if (x >= beta)
+			{
+				AddHash(side, depth, x, BETA, from, to);
+				PlyMove[ply - 1] = CUT;
+				return beta;
+			}
+			if (x > 9000 && ply > 0)
+			{
+				AddHash(side, depth, x, BETA, from, to);
+				PlyMove[ply - 1] = CUT;
+				return x;
+			}
+			alpha = x;
+		}
+		bestscore = x;
+	}
+		else
+		{
+			first_move[ply + 1] = first_move[ply];
+			printf(" illegal ");
+			Alg(from,to);
+			z();
+			MakeMove(from, to, flags);
 		}
 	}
 
 	int r = 0;
-	
+	int ev = -10000;
+	int top = HASH_SCORE;
+	int d;
+	int lowest;
+		
 	if (check > -1)
 	{
+		Evasion(check);
 		game_list[hply].flags |= INCHECK;
-		for (int i = first; i < last; ++i)
+
+		if (lookup > -1)
 		{
-			top = Sort(i, top, last);
+			move_list[first] = bestmove;
+			RemoveHashMove(first + 1, bestmove.from, bestmove.to);
+			first++;
+		}
+
+		for (int i = first; i < first_move[ply + 1]; i++)
+		{
+			top = Sort(i, top, first_move[ply + 1]);
 
 			from = move_list[i].from;
 			to = move_list[i].to;
 			flags = move_list[i].flags;
-			
-			if (move_list[i].score < HASH_SCORE && count>0 && !pvs)
-			{
-				if (depth <= 1)
-				{
-					ev = ev1 + PieceScore[side][b[from]][to] - PieceScore[side][b[from]][from];
-					if (b[to] < 6)
-						ev += piece_value[b[to]] + PieceScore[xside][b[to]][to] + frontier[b[to]];
-					if (ev + frontier[b[from]] <= alpha)
-					{
-						continue;
-					}
-				}
-			}
-			if (!MakeMove(move_list[i].from, move_list[i].to, move_list[i].flags))
+
+			if (!MakeMove(from, to, flags))
 			{
 				continue;
 			}
-			//f = true;
-			if (move_list[i].score < HASH_SCORE && depth == 2 && ply > 1)
+			if (count > 0 && !pvs)
+			{
+				if (depth <= 2)
+				{
+					if (ev1 == INVALID)
+						ev1 = eval(alpha, beta);
+				}
+				if (depth <= 1)
+				{
+					ev = ev1 + PieceScore[side][b[from]][to] - PieceScore[side][b[from]][from];
+					if (b[to] != EMPTY)
+						ev += piece_value[b[to]] + PieceScore[xside][b[to]][to] + frontier[b[to]];
+					if (ev + frontier[b[from]] <= alpha)
+					{
+						UnMakeMove();
+						if (alpha - ev > 100)
+						{
+							break;
+						}
+						continue; 
+					}
+				}
+			}
+			if (count > 0 && depth == 2 && ply > 1 && !pvs)
 			{
 				ev = ev1 + PieceScore[xside][b[to]][to] - PieceScore[xside][b[to]][from];
 				if (flags & CAPTURE)
@@ -454,39 +553,28 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 				}
 			}
 
-			//blunder
-			//*
-			if (move_list[i].score < HASH_SCORE && move_list[i].score > -1 && b[to] != 5 && !(flags & CAPTURE) && i < last - 1)
-			{
-				if (BestCaptureSquare(side, xside, to, b[to]) > 0)
-				{
-					move_list[i].score = -p_value[b[to]];
-					UnMakeMove();
-					i--;
-					continue;
-				}
-			}
-			//*/
-
 			count++;
 
-			total_count++;
-
-			b_nodes++;
-			c_nodes[ply - 1]++;
-			PlyMove[ply] = c_nodes[ply - 1]; 
-
-			d = depth-r;
-			extend[ply] = 1;
-
-			if (alpha == initial_alpha)
-				x = -search(-beta, -alpha, d, pvs, DO_NULL);
+			if ((ply + depth > currentmax &&
+				(to == game_list[hply - 2].to && game_list[hply - 2].capture != EMPTY && game_list[hply - 2].capture > 0 &&
+					Attack(side, to) == 0)))
+			{
+				d = depth;
+				extend[ply] = 1;
+			}
 			else
 			{
-				x = -search(-alpha - 1, -alpha, d, NO_PV, DO_NULL);
+				d = depth - 1;
+			}
+
+			if (alpha == initial_alpha)
+				x = -Search(-beta, -alpha, d, pvs, DO_NULL);
+			else
+			{
+				x = -Search(-alpha - 1, -alpha, d, NO_PV, DO_NULL);
 				if (x > alpha)
 				{
-					x = -search(-beta, -alpha, d, PV, DO_NULL);
+					x = -Search(-beta, -alpha, d, PV, DO_NULL);
 				}
 			}
 
@@ -501,13 +589,6 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 			{
 				if (x >= beta)
 				{
-#if STATS
-					cut_nodes++;
-					if (i - first_move[ply] == 0)
-						first_nodes++;
-					if (first_move[ply + 1] > first_move[ply])
-						av_nodes += 100 * (i - first_move[ply]) / (first_move[ply + 1] - first_move[ply]);
-#endif
 					AddHash(side, depth, x, BETA, from, to);
 					PlyMove[ply - 1] = CUT;
 					return beta;
@@ -524,6 +605,11 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 
 		if (!count)
 		{
+			if (!(game_list[hply - 2].flags & INCHECK))
+			{
+				for (int i = first_move[ply - 2]; i < first_move[ply - 1]; i++)
+					move_list[i].flags |= MATETHREAT;
+			}
 			PlyMove[ply - 1] = CUT;
 			return -10000 + ply;
 		}
@@ -542,85 +628,77 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 		}
 		return alpha;
 	}
-	bool f = false;
 	//end check
 
-	int threat = 0;
-	int threat_start = 0;
-	int threat_dest = 0;
-//*
-	if ((depth > 1 || pvflag) && alpha > -10000)
-	{
-		threat = GetThreatMove(xside, side, threat_start, threat_dest, alpha,ev1);
+	GenCaptures();
 	
-		if (threat > 1)
+	firstmove = bestmove;
+	
+	if (lookup > -1)
+	{
+		//if(bestmove.flags & (CAPTURE | PROMOTE | EP))
+		if (b[bestmove.to] != EMPTY ||
+			(b[bestmove.from] == P && (rank[side][bestmove.from] == RANK_7 || bestmove.flags & EP)))
 		{
-			//Alg(threat_start, threat_dest);
-			//z();
-			MoveAttacked(xside,threat_dest, threat_start, ply);
+			//if(!(hash_move.flags & (CAPTURE | PROMOTE | EP)))
+			//	z();
+			RemoveHashMove(first_move[ply] + 1, bestmove.from, bestmove.to);
 		}
+		first = first_move[ply] + 1;
+		//	ShowAll(ply);
 	}
-//*/         
-
-	//if (b[B2]==3 && b[D3]==2 && b[E5]==0 && b[E4]==0 && b[F3]==5 && b[C3]==1 && mask[B2] & bit_units[1])//
-	
-	for (int i = first; i < last; i++)
+	else
 	{
-		top = Sort(i, top, last);
+		first = first_move[ply];
+	}
+		for (int i = first; i < first_move[ply + 1]; i++)
+		{
+			if (b[move_list[i].to] != EMPTY)
+			{
+				to = move_list[i].to;
+				from = move_list[i].from;
+				lowest = GetLowestAttacker(xside, to);
+				if (lowest > -1)
+				{
+					if (p_value[b[from]] < p_value[b[to]])
+					{
+						move_list[i].score = p_value[b[to]] - p_value[b[from]];
+					}
+					else if (p_value[b[from]] > p_value[b[to]] + p_value[lowest] && lowest != 5)
+					{
+						move_list[i].score = (p_value[b[to]] + p_value[lowest]) - p_value[b[from]];
+					}
+					else
+					{
+						move_list[i].score = SEESearch(side, from, to);
+					}
+				}
+				else
+				{
+					move_list[i].score = p_value[b[to]];
+				}
+			}
+		}
+	for (int i = first; i < first_move[ply + 1]; i++)
+	{
+		SortCaptures(i, first_move[ply + 1]);
 
 		from = move_list[i].from;
 		to = move_list[i].to;
 		flags = move_list[i].flags;
 
-		//2.745 rxb7 d=12 1.184947
-		//bauer 640170 d=12  511954
-		//dragon2 5 meg d=14
-		//makemove
-
-		if (move_list[i].score == KILLER_SCORE)
-			flags |= KILLER;
-		if (move_list[i].score == COUNTER_SCORE)
-			flags |= COUNTER;
-
-		if (count > 0 && depth > 2)
+		if (count > 0 && !pvs)
 		{
-			r = Reduce(i);
-			if (ply > 1 && extend[ply - 1] < 0 && r>0)
+			if (depth <= 2)
 			{
-				r += abs(extend[ply - 1]);
-				if (ply > 2 && extend[ply - 2] < 0)//25/8/21
-				{
-					r += abs(extend[ply - 2]);
-				}
+				if (ev1 == INVALID)
+					ev1 = eval(alpha, beta);
 			}
-			if (r == 1 && depth > 4 && currentmax / 2 < depth && count > (last - first) / 2)
+			if (depth <= 1)
 			{
-				r++;
-			}
-		}
-
-		if (IsCheck(side, b[from], to, pieces[xside][5][0]))
-		{
-			flags |= CHECK;
-		}			
-
-		if (move_list[i].score<HASH_SCORE &&
-			f &&
-			!(flags & CHECK) &&
-			!(flags & PROMOTE) &&
-			!(piece_mat[side] == 0 && b[to] == 0 && !(mask_passed[xside][to] & bit_pieces[side][0])))
-		{
-			if (depth - r <= 1)
-			{
-				ev = ev1 + PieceScore[side][b[from]][to] - PieceScore[side][b[from]][from] + frontier[b[from]];
-				if (flags & CAPTURE)
-					ev += piece_value[b[to]] + PieceScore[xside][b[to]][to];
-
-				if (ev <= alpha)
-				{
-					continue;
-				}
-				if (move_list[i].score < 0 && count>0)
+				ev = ev1 + PieceScore[side][b[from]][to] - PieceScore[side][b[from]][from];
+				ev += piece_value[b[to]] + PieceScore[xside][b[to]][to] + frontier[b[to]];
+				if (ev + frontier[b[from]] <= alpha)
 				{
 					continue;
 				}
@@ -630,114 +708,216 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 		{
 			continue;
 		}
-
-		f = true;
-		if (depth - r == 2 && 
-			f &&
-			!(flags & CHECK) &&
-			!(flags & PROMOTE) &&
-			!(flags & PASSED7))
+		if (count > 0 && depth == 2 && ply > 1)
 		{
-			ev = ev1 + PieceScore[xside][b[to]][to] - PieceScore[xside][b[to]][from] + frontier[b[to]]
-				+ piece_value[game_list[hply - 1].capture] + PieceScore[side][game_list[hply - 1].capture][to] +
-				frontier[game_list[hply - 1].capture];
-			if (ev <= alpha && BestThreat(side, xside, alpha - ev)==0)
+			ev = ev1 + PieceScore[xside][b[to]][to] - PieceScore[xside][b[to]][from];
+			ev += piece_value[game_list[hply - 1].capture] + PieceScore[side][game_list[hply - 1].capture][to] + frontier[b[to]];
+			if (ev <= alpha && BestThreat(xside, side, alpha - ev) == 0)
 			{
 				UnMakeMove();
 				continue;
 			}
-			if (ev + BestThreat(xside, side, alpha - ev) <= alpha)
-			{
-				//Alg(from, to);
-				//z();
-			}
 		}
 
-		//blunder
-		//*
-		if (depth - r > 1 &&
-			alpha - ev1 < 250 &&
-			move_list[i].score < HASH_SCORE &&
-			!(flags & PROMOTE) &&
-			//!(flags & CHECK) &&
-			//!(flags & CAPTURE) &&
-			move_list[i].score > -1)
-		{
-			if (threat > 0 && !(flags & CHECK) && from != threat_dest && b[threat_dest] < 6)
-			{
-				move_list[i].score = BlunderThreat(threat, threat_start, threat_dest, piece_value[game_list[hply - 1].capture], to, flags);
-			}
-			else if (flags & CAPTURE)
-			{
-				move_list[i].score = BlunderCapture(piece_value[game_list[hply - 1].capture], to, flags);
-			}
-			else if (flags & CHECK)
-			{
-				move_list[i].score = BlunderCheck(to, flags);
-			}
-			else
-			{
-				move_list[i].score = Blunder(to, flags);
-			}
-			if (move_list[i].score < 0)
-			{
-				i--;
-				UnMakeMove();
-				continue;
-			}
-			if (ply>1 && threat > 0 && r > 0 && extend[ply - 1] < 0 && depth - r > 1)
-			{
-				//Alg(threat_start, threat_dest);
-				//printf("+");
-				//Alg(from, to);
-				//z();
-				r = 0;
-			}			
-		}
-		//*/	
 		count++;
-		b_nodes++;
-		c_nodes[ply - 1]++;
-		PlyMove[ply] = c_nodes[ply - 1];
-		extend[ply] = -r;
 
-		if ((ply + depth > currentmax &&
-			(to == game_list[hply - 2].to && game_list[hply - 2].capture < 6 && game_list[hply - 2].capture>0 &&
-				Attack(side, to)==0)) ||
-			(first_move[ply] - first_move[ply - 1] == 1))
-		{
-			d = depth;
-			extend[ply] = 1;
-		}
+		d = depth - 1;
+
+		if (alpha == initial_alpha)
+			x = -Search(-beta, -alpha, d, pvs, DO_NULL);
 		else
 		{
-			d = depth - 1;
+			x = -Search(-alpha - 1, -alpha, d, NO_PV, DO_NULL);
+			if (x > alpha)
+			{
+				x = -Search(-beta, -alpha, d, PV, DO_NULL);
+			}
 		}
+
+		UnMakeMove();
+
+		if (x > bestscore)
+		{
+			bestscore = x;
+			bestmove = move_list[i];
+		}
+		if (x > alpha)
+		{
+			if (x >= beta)
+			{
+				AddHash(side, depth, x, BETA, from, to);
+				PlyMove[ply - 1] = CUT;
+				return beta;
+			}
+			if (x > 9000 && ply > 0)
+			{
+				AddHash(side, depth, x, BETA, from, to);
+				PlyMove[ply - 1] = CUT;
+				return x;
+			}
+			alpha = x;
+		}
+	}
+	//end captures
+
+	int killer_from = killer[ply].from;
+	int killer_to = killer[ply].to;
+	int killer2_from = killer2[ply].from;
+	int killer2_to = killer2[ply].to;
+	int counter_from = counter[game_list[hply - 1].from][game_list[hply - 1].to].from;
+	int counter_to = counter[game_list[hply - 1].from][game_list[hply - 1].to].to;
+
+	int h2 = history[killer_from][killer_to];
+	int h3 = history[killer2_from][killer2_to];
+	int h4 = history[counter_from][counter_to];
+
+	history[killer_from][killer_to] = KILLER_SCORE;
+	history[killer2_from][killer2_to] = KILLER_SCORE;
+	if (!(game_list[hply - 1].flags & INCHECK))
+		history[counter_from][counter_to] = COUNTER_SCORE;
+
+	int startmoves = first_move[ply + 1];
+
+	GenNon();
+
+	history[killer_from][killer_to] = h2;
+	history[killer2_from][killer2_to] = h3;
+	history[counter_from][counter_to] = h4;
+	
+	if (lookup > -1)
+	{
+		if (b[firstmove.to] == EMPTY && !((b[firstmove.from] == P && (rank[side][firstmove.from] == RANK_7 || firstmove.flags & EP))))
+		{	
+
+			RemoveHashMove(startmoves, firstmove.from, firstmove.to);
+		}
+	}
+
+	if (depth > 2)//??
+	{
+		for (int piece = Q; piece > P; piece--)
+			for (int x = 0; x < total[side][piece]; x++)
+			{
+				if (GetThreat(startmoves, pieces[side][piece][x]) > -1)
+				{
+					piece = 0;
+					break;
+				}
+			}
+	}
+
+	for (int i = startmoves; i < first_move[ply + 1]; i++)
+	{
+		top = Sort(i, top, first_move[ply + 1]);
+
+		from = move_list[i].from;
+		to = move_list[i].to;
+		flags = move_list[i].flags;
+		lowest = -1;
+
+		if (count > 0 && flags & CHECK && move_list[i].score > BLUNDER_CHECK_SCORE)
+		{
+			bit_all &= not_mask[from];
+			lowest = GetLowestAttacker(xside, to);
+			bit_all |= mask[from];
+			if (lowest > -1 && lowest < 5 && lowest <= b[from])
+			{
+				move_list[i].score = BLUNDER_CHECK_SCORE;
+				i--;
+				continue;
+			}
+		}
+		if (count > 0 && !(flags & (CHECK | KILLER)) && move_list[i].score > -1 && depth > 2)
+		{
+			bit_all &= not_mask[from];
+			lowest = GetLowestAttacker(xside, to);
+			bit_all |= mask[from];
+			if (lowest > -1)
+			{
+				if (Attack(side, to) == 0 || lowest < b[from])
+				{
+					move_list[i].score = -1;
+					i--;
+					continue;
+				}
+			}
+		}
+
+		if (count > 0 && depth > 2)
+		{
+			r = Reduce(i);
+		}
+
+		if (count > 0 && !(flags & CHECK))
+		{
+			if (depth == 1)
+			{
+				if (ev1 == INVALID)
+				{
+					ev1 = eval(alpha, beta);
+				}
+				ev = ev1 + PieceScore[side][b[from]][to] - PieceScore[side][b[from]][from] + frontier[b[from]];
+
+				if (ev <= alpha)
+				{
+					if (alpha - ev > 100)
+					{
+						break;
+					}
+					continue;
+				}
+			}
+		}
+
+		if (!MakeMove(from, to, flags))
+		{
+			continue;
+		}
+
+		if (depth - r == 2 &&
+			count > 0 && !(flags & CHECK))
+		{
+			if (ev1 == INVALID)
+			{
+				ev1 = -eval(alpha, beta);
+			}
+			ev = ev1 + PieceScore[xside][b[to]][to] - PieceScore[xside][b[to]][from] + frontier[b[to]] +
+				frontier[game_list[hply - 1].capture];
+			if (ev <= alpha && BestThreat(xside, side, alpha - ev) == 0)
+			{
+				UnMakeMove();
+				continue;
+			}
+		}
+
+		count++;
+
+		d = depth - 1;
 
 		if (alpha == initial_alpha)
 		{
-			x = -search(-beta, -alpha, d - r, pvs, DO_NULL);
+			x = -Search(-beta, -alpha, d - r, pvs, DO_NULL);
 			if (r > 0 && x > alpha)
 			{
-				x = -search(-beta, -alpha, d, pvs, DO_NULL);
+				x = -Search(-beta, -alpha, d, pvs, DO_NULL);
 			}
 		}
 		else
 		{
-			x = -search(-alpha - 1, -alpha, d - r, NO_PV, DO_NULL);
+			x = -Search(-alpha - 1, -alpha, d - r, NO_PV, DO_NULL);
 
 			if (x > alpha)
 			{
-				x = -search(-beta, -alpha, d - r, PV, DO_NULL);
+				x = -Search(-beta, -alpha, d - r, PV, DO_NULL);
 			}
 			if (r > 0)
 			{
 				if (x > alpha)
 				{
 					extend[ply] = 0;
-					x = -search(-alpha - 1, -alpha, d, NO_PV, DO_NULL);
+					x = -Search(-alpha - 1, -alpha, d, NO_PV, DO_NULL);
 					if (x > alpha)
-						x = -search(-beta, -alpha, d, PV, DO_NULL);
+						x = -Search(-beta, -alpha, d, PV, DO_NULL);
 				}
 			}
 		}
@@ -765,27 +945,30 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 				PlyMove[ply] = CUT;
 				return beta;
 			}
-
 			if (x > 9000 && ply > 0)
 			{
 				AddHash(side, depth, x, BETA, from, to);
 				PlyMove[ply] = CUT;
 				return x;
 			}
+
 			alpha = x;
+
+			if (ply == 0)
+			{
+				rootscore[i].score = x;
+			}
 
 			if (x > root_score && currentmax > 6 && PlyMove[1] > 1)
 			{
 				break;
 			}
 		}
-		if (move_list[i].score == KILLER_SCORE)
-			stats_killers[1]++;
 	}
 
 	PlyMove[ply] = ALL;
 
-	if (!f)
+	if (!count)
 	{
 		return 0;
 	}
@@ -800,357 +983,21 @@ int search(int alpha, int beta, int depth, int pvs, int null)
 	else
 	{
 		if (depth > 3)
-		  AddHash(side, depth, alpha, ALPHA, bestmove.from, bestmove.to);
+			AddHash(side, depth, alpha, ALPHA, bestmove.from, bestmove.to);
 	}
 	return alpha;
-}
-
-int quiesce(int alpha, int beta, int depth)
-{
-	nodes++;
-	if (nodes % 4096 == 0)
-		checkup();
-	if (ply > MAX2)
-		return eval(alpha, beta);
-
-	int x;
-	int count = 0;
-	int top = HASH_SCORE;
-	int check = Check(xside, pieces[side][5][0]);
-
-	if (check > -1)
-	{
-		Evasion(check);
-
-		if (first_move[ply] == first_move[ply + 1])
-		{
-			return ply - 10000;
-		}
-		if (depth<= -4 )//-4)
-		{
-			return CaptureSearch(alpha, beta, depth);
-		}
-		//29/7/21
-		if (game_list[hply - 1].capture == 6 && !(game_list[hply - 1].flags & PROMOTE))//19/8/21
-		{
-			x = eval(alpha, beta);
-			if (alpha > x)
-			{
-				//z();
-				return alpha;
-			}
-		}
-	    for (int i = first_move[ply]; i < first_move[ply + 1]; i++)
-		{
-			top = Sort(i, top, first_move[ply + 1]);
-
-		if (!MakeCapture(move_list[i].from, move_list[i].to, move_list[i].flags))
-		{
-			continue;
-		}
-		count++;
-		x = -quiesce(-beta, -alpha, depth-1);
-		UnMakeCapture();
-
-		if (x > alpha)
-		{
-			if (x >= beta)
-			{
-				AddHash(side, depth, x, BETA, move_list[i].from, move_list[i].to);
-				return beta;
-			}
-			if (x > 9000)
-			{
-				AddHash(side, depth, x, BETA, move_list[i].from, move_list[i].to);
-				return x;
-			}
-			alpha = x;
-
-			AddHash(side, depth, alpha, ALPHA, move_list[i].from, move_list[i].to);
-		}
-		if (x > root_score && currentmax > 6 && PlyMove[1] > 1)
-		{
-			break;
-		}
-		}
-		if (count == 0)
-		{
-			return -10000 + ply;
-		}
-		return alpha;
-	}
-	//end evasion
-
-	if (piece_mat[side] == 0 && BlockedPawns3(side) == 1)
-	{
-		if (SafeKingMoves(side, xside) == 0)
-			return 0;
-	}
-	int lookup = LookUp2(side);
-	if (lookup == -1)
-		x = eval(alpha, beta);
-	else
-		x = hash_score;
-
-	if (x >= beta)
-	{
-		return beta;
-	}
-	if (x > alpha)
-	{
-		alpha = x;
-	}
-	if (drawn == 1)
-	{
-		drawn = 0;
-		return 0;
-	}
-
-	if (depth > -4 )//-2)
-		GenCapsChecks(alpha - x, depth);
-	else
-		GenCaps(alpha - x);
-
-	if (first_move[ply] == first_move[ply + 1])
-	{
-		return alpha;
-	}
-	if(depth<= -4) //-4)37562 d=7 d3
-	{
-		return CaptureSearch(alpha, beta, depth); //37630
-	}
-	count = 0;
-
-		if (first_move[ply] + 1 == first_move[ply + 1])
-		{
-			if (MakeCapture(move_list[first_move[ply]].from, move_list[first_move[ply]].to, move_list[first_move[ply]].flags))
-			{
-				x = -quiesce(-beta, -alpha, depth);
-				extend[ply] = 1;
-
-				UnMakeCapture();
-				if (x > alpha)
-				{
-					if (x >= beta)
-					{
-						AddHash(side, depth, x, BETA, move_list[first_move[ply]].from, move_list[first_move[ply]].to);//3/5/17
-						return beta;
-					}
-					AddHash(side, depth, x, ALPHA, move_list[first_move[ply]].from, move_list[first_move[ply]].to);//6/5/17
-					return x;
-				}
-				return alpha;//3/1/14
-			}
-			return alpha;//23/8/21
-		}
-
-		//more than 1 move
-		if (lookup > -1)
-		{
-			SetHashMove();
-		}
-	
-		for (int i = first_move[ply]; i < first_move[ply + 1]; i++)
-		{
-			top = Sort(i, top, first_move[ply + 1]);
-
-			if (!MakeCapture(move_list[i].from, move_list[i].to, move_list[i].flags))
-			{
-				continue;
-			}
-			count++;
-			if (piece_value[b[move_list[i].to]] < piece_value[game_list[hply - 1].capture] && 
-				game_list[hply - 1].capture < 6)
-			{
-				x = -quiesce(-beta, -alpha, depth);
-			}
-			else
-				x = -quiesce(-beta, -alpha, depth - 1);
-
-			UnMakeCapture();
-
-			if (x > alpha)
-			{
-				if (x >= beta)
-				{
-					if (move_list[i].flags & CHECK)
-					{
-						if (check_history[b[move_list[i].from]][move_list[i].to] < HISTORY_LIMIT)
-							check_history[b[move_list[i].from]][move_list[i].to] ++;
-						else
-							check_history[b[move_list[i].from]][move_list[i].to] /= 2;
-						if (x > 9900 && check_history[b[move_list[i].from]][move_list[i].to] < CAPTURE_SCORE)
-							check_history[b[move_list[i].from]][move_list[i].to] = CAPTURE_SCORE;
-					}
-
-					AddHash(side, depth, x, BETA, move_list[i].from, move_list[i].to);
-					return beta;
-				}
-				if (x > 9000)
-				{
-					AddHash(side, depth, x, BETA, move_list[i].from, move_list[i].to);
-					return x;
-				}
-				alpha = x;
-			}
-			if (x > root_score && currentmax > 6 && PlyMove[1] > 1)
-			{
-				break;
-			}
-		}
-	return alpha;
-}
-
-int CaptureSearch(int alpha, int beta, int depth)
-{
-	int x;
-
-	for (int i = first_move[ply]; i < first_move[ply + 1]; i++)
-	{
-		Sort2(i, first_move[ply + 1]);
-		if (!MakeCapture(move_list[i].from, move_list[i].to, move_list[i].flags))
-			continue;
-		nodes++;
-
-		if (ply > deep)
-		{
-			deep = ply;
-		}
-
-		x = -RecaptureSearch(-beta, -alpha, depth - 1);
-		UnMakeCapture();
-
-		if (x > alpha)
-		{
-			if (x >= beta)
-			{
-				AddHash(side, depth, x, BETA, move_list[i].from, move_list[i].to);
-				return beta;
-			}
-			alpha = x;
-			if (drawn == 1)
-			{
-				drawn = 0;
-				return 0;
-			}
-		}
-		if (x > root_score && currentmax > 6 && PlyMove[1] > 1)
-		{
-			break;
-		}
-	}
-	return alpha;
-}
-
-int RecaptureSearch(int alpha, int beta, int depth)
-{
-	nodes++;
-
-	if (ply >= MAX1)
-	{
-		return eval(alpha, beta);
-	}
-	/*
-	int flag = 0;
-	if (piece_value[game_list[hply - 2].capture] < piece_value[game_list[hply - 1].capture] &&
-		game_list[hply - 2].to == game_list[hply - 1].to)
-	{
-		//Alg(game_list[hply - 1].from,game_list[hply - 1].to);
-		//z();
-		flag = 1;
-		//printf("+");
-	}
-	*/
-
-	int x = 0;
-	//if (flag == 0)
-	{
-		int lookup = LookUp2(side);
-		if (lookup == -1)
-			x = eval(alpha, beta);
-		else
-			x = hash_score;
-
-		if (drawn == 1)
-		{
-			drawn = 0;
-			return 0;
-		}
-		if (x >= beta)
-		{
-			return beta;
-		}
-
-		if (x > alpha)
-		{
-			alpha = x;
-		}
-	}
-	int g = gen_recaptures(alpha - x, game_list[hply - 1].to);
-
-	if (g == 0)
-	{
-		if (piece_mat[side] == 0 && BlockedPawns3(xside) == 1)
-		{
-			if (SafeKingMoves(side, xside) == 0)
-			{
-				return 0;
-			}
-		}
-		return alpha;
-	}
-
-	if (g == 2)
-	{
-		return alpha + 1;
-	}
-
-	if (ply > deep)
-	{
-		deep = ply;
-	}
-
-	MakeRecapture(move_list[first_move[ply]].from, move_list[first_move[ply]].to);
-
-	x = -RecaptureSearch(-beta, -alpha, depth - 1);
-
-	UnMakeRecapture();
-
-	if (x > alpha)
-	{
-		if (x >= beta)
-		{
-			if (depth > -6)
-				AddHash(side, depth, x, BETA, move_list[first_move[ply]].from, move_list[first_move[ply]].to); //4/5/17
-			return beta;
-		}
-		alpha = x;
-	}
-	return alpha;
-}
-
-int reps2()
-{
-	for (int i = hply - 4; i >= hply - fifty; i -= 2)
-	{
-		if (game_list[i].hash == currentkey && game_list[i].lock == currentlock)
-		{
-			return 1;
-		}
-	}
-	return 0;
 }
 
 int Sort(const int from, const int top, const int last)
 {
-	int bs = move_list[from].score;
+	int bestscore = move_list[from].score;
 	int bi = from;
 	for (int i = from + 1; i < last; i++)
-		if (move_list[i].score > bs)
+		if (move_list[i].score > bestscore)
 		{
-			bs = move_list[i].score;
+			bestscore = move_list[i].score;
 			bi = i;
-			if (bs >= top)
+			if (bestscore >= top)
 				break;
 		}
 
@@ -1158,24 +1005,10 @@ int Sort(const int from, const int top, const int last)
 	move_list[from] = move_list[bi];
 	move_list[bi] = g;
 
-	return bs;
+	return bestscore;
 }
 
-void Sort2(const int from, const int last)
-{
-	int bi = from;
-	for (int i = from + 1; i < last; i++)
-		if (move_list[i].score > move_list[bi].score)
-		{
-			bi = i;
-		}
-
-	move_data g = move_list[from];
-	move_list[from] = move_list[bi];
-	move_list[bi] = g;
-}
-
-void checkup()
+void CheckUp()
 {
 	if (fixed_depth == 0 && ((GetTime() >= stop_time) || (max_time < 100 && ply>1)) || (max_time < 100))
 	{
@@ -1186,7 +1019,7 @@ void checkup()
 
 int Reduce(const int i)
 {
-	if (move_list[i].flags & (CAPTURE | CHECK | PROMOTE | MATETHREAT | COUNTER))// | KILLER))
+	if (move_list[i].flags & (CAPTURE | CHECK | PROMOTE | PASSED7 | MATETHREAT))
 		return 0;
 	if (piece_mat[xside] == 0)
 		return 0;
@@ -1202,22 +1035,24 @@ void DisplayPV()
 	for (int x = 0; x < MAX_PLY; x++)
 	{
 		if (LookUp2(side) == -1)
+		{
 			break;
-		if (x > 1 && reps2())
+		}
+		if (x > 1 && Reps2())
 			break;
 		printf(" ");
-		if (move.from == hash_start && move.to == hash_dest)
+		if (move.from == hash_move.from && move.to == hash_move.to)
 			break;
-		move.from = hash_start;
-		move.to = hash_dest;
+		move.from = hash_move.from;
+		move.to = hash_move.to;
 		move.flags = 0;
 
 		Alg(move.from, move.to);
 		if (x == 0)
 		{
-			hash_start = root.from = move.from;
-			hash_dest = root.to = move.to;
-			hash_flags = root.flags = 0;
+			hash_move.from = root.from = move.from;
+			hash_move.to = root.to = move.to;
+			hash_move.flags = root.flags = 0;
 		}
 		MakeMove(move.from, move.to, 0);
 	}
@@ -1227,15 +1062,7 @@ void DisplayPV()
 
 void UpdateKillers(const int i, const int from, const int to, const int x, const int depth)
 {
-	if (move_list[i].score == KILLER_SCORE)
-		stats_killers[0]++;
-	cut_nodes++;
-	if (i - first_move[ply] == 0)
-		first_nodes++;
-	if (first_move[ply + 1] > first_move[ply])
-		av_nodes += 100 * (i - first_move[ply]) / (first_move[ply + 1] - first_move[ply]);
-
-	if (b[to] == 6 && !(move_list[i].flags & PROMOTE))
+	if (!(move_list[i].flags & PROMOTE))
 	{
 		if (move_list[i].flags & CHECK)
 		{
@@ -1243,28 +1070,28 @@ void UpdateKillers(const int i, const int from, const int to, const int x, const
 				check_history[b[from]][to] += depth;
 			else
 				check_history[b[from]][to] >>= 1;
-			if (x > 9900 && check_history[b[from]][to] < CAPTURE_SCORE)
-				check_history[b[from]][to] = CAPTURE_SCORE;
+			if (x > WON_ENDGAME && check_history[b[from]][to] < CHECK_SCORE)
+				check_history[b[from]][to] = CHECK_SCORE;
 		}
 		else if (history[from][to] < HISTORY_LIMIT)
 		{
 			history[from][to] += depth;
-			counter[b[game_list[hply - 1].to]][game_list[hply - 1].to][0] = from;
-			counter[b[game_list[hply - 1].to]][game_list[hply - 1].to][1] = to;
+			if (game_list[hply - 1].capture == EMPTY)
+			{
+				counter[game_list[hply - 1].from][game_list[hply - 1].to].from = from;
+				counter[game_list[hply - 1].from][game_list[hply - 1].to].to = to;
+			}
 		}
 		else
 			history[from][to] >>= 1;
 	}
 
-	if (b[to] == 6 &&
-		!(move_list[i].flags & CHECK) && !(killer[ply][0] == from && killer[ply][1] == to))
+	if (!(move_list[i].flags & CHECK) && !(killer[ply].from == from && killer[ply].to == to))
 	{
-		killer2[ply][0] = killer[ply][0];
-		killer2[ply][1] = killer[ply][1];
-		killer2[ply][2] = killer[ply][2];
-		killer[ply][0] = from;
-		killer[ply][1] = to;
-		killer[ply][2] = b[from];
+		killer2[ply] = killer[ply];
+		killer[ply].from = from;
+		killer[ply].to = to;
+		killer[ply].score = b[from];
 	}
 }
 
@@ -1272,12 +1099,8 @@ void SetKillers()
 {
 	for (int x = 0; x < MAX2; x++)
 	{
-		killer[x][0] = killer[x + 1][0];
-		killer[x][1] = killer[x + 1][1];
-		killer[x][2] = killer[x + 1][2];
-		killer2[x][0] = killer2[x + 1][0];
-		killer2[x][1] = killer2[x + 1][1];
-		killer2[x][2] = killer2[x + 1][2];
+		killer[x] = killer[x + 1];
+		killer2[x] = killer2[x + 1];
 	}
 }
 
@@ -1288,34 +1111,156 @@ void ClearKillers()
 	memset(history, 0, sizeof(history));
 }
 
-int BlockedPawns3(const int s)
-{
-	BITBOARD b2;
-
-	if (s == 0)
-		b2 = bit_pieces[0][0] & (~(bit_units[0] | bit_units[1])) >> 8;
-	else
-		b2 = bit_pieces[1][0] & (~(bit_units[0] | bit_units[1])) << 8;
-	if (b2 > 0)
-		return 0;
-	return 1;
-}
-
 int GetCurrentDepth()
 {
 	return currentdepth;
 }
 
-int SetHashMove()
+int Reps2()
 {
-	for (int i = first_move[ply]; i < first_move[ply + 1]; i++) 
+	for (int i = hply - 4; i >= hply - fifty; i -= 2)
 	{
-		if (move_list[i].from == hash_start && move_list[i].to == hash_dest)
+		if (game_list[i].hash == currentkey && game_list[i].lock == currentlock)
 		{
-			move_list[i].score = HASH_SCORE;
 			return 1;
 		}
 	}
 	return 0;
+}
+
+bool IsLegal(const int from, const int to)
+{
+	if (b[from] == K)
+	{
+		if (bit_kingmoves[from] & mask[to])
+			return true;
+		if (abs(from - to) == 2)
+		{
+			if (to == G1 && castle & 1)
+				return true;
+			else if (to == C1 && castle & 2)
+				return true;
+			else if (to == G8 && castle & 4)
+				return true;
+			else if (to == C8 && castle & 8)
+				return true;
+		}
+		return false;
+	}
+	if (b[to] == EMPTY && col[from] != col[to] && bit_pawndefends[xside][from] & mask[to])
+	{
+		if ((b[game_list[hply - 1].to] == P && 
+			abs(game_list[hply - 1].from - game_list[hply - 1].to) == 16 &&
+			col[game_list[hply - 1].to] == col[to]))
+		{
+			return true;
+		}
+		return false;
+	}
+	if(b[from]==3)
+{
+	if(bit_rookmoves[from] & mask[to] && 
+		(bit_between[from][to] & bit_all) == 0)
+	return true;
+	else
+		return false;
+}
+if(b[from]==2)
+{
+	if(bit_bishopmoves[from] & mask[to] && 
+		(bit_between[from][to] & bit_all) == 0)
+	return true;
+	else
+		return false;
+}
+if(b[from]==4)
+{
+	if(bit_queenmoves[from] & mask[to] && 
+		(bit_between[from][to] & bit_all) == 0)
+	return true;
+	else
+		return false;
+}
+if(b[from]==2)
+{
+	if(bit_knightmoves[from] & mask[to])
+	return true;
+	else
+		return false;
+}
+if(b[from]==0)
+{
+	if(pawnplus[side][from] == to)
+	{
+		if(b[to]==6)
+		{
+			return true;
+		}
+		return false;
+	}
+	if (bit_pawndefends[xside][from] & mask[to] && b[to]<6)
+	{
+		return true;
+	}
+	if(pawndouble[side][from] == to)
+	{
+		if(b[pawnplus[side][from]]==6 && b[to]==6)
+		{
+			return true;
+		}
+		return false;
+	}
+}
+return true;
+}
+
+int GetThreat(int first, int target)
+{
+	int attacker = GetNextAttacker(xside, target);
+	int count = 0;
+
+	if (attacker > -1)
+	{
+		if (p_value[b[attacker]] < p_value[b[target]] ||
+			Attack(side, target) == 0 ||
+			SEESearch(xside, attacker, target) > 0)
+		{
+			for (int x = first; x < first_move[ply + 1]; x++)
+			{
+				if (move_list[x].from == target)
+				{
+					if(GetNextAttacker(xside, move_list[x].to) > -1)
+						break;
+					count++;
+					move_list[x].score += ESCAPE_SCORE + 9;
+				}
+				else if (count > 0)
+					break;
+			}
+		}
+		if(count > 0)
+		{
+		//	printf("\n threat");
+		//ShowAll(ply);
+		}
+	}
+	return attacker;
+}
+
+int RemoveHashMove(const int start, const int from, const int to)
+{
+for (int i = start; i < first_move[ply + 1]; i++)
+	{
+		if (move_list[i].from == from && move_list[i].to == to)
+		{
+			move_list[i] = move_list[first_move[ply + 1] - 1];
+			first_move[ply + 1]--;
+			return 0;
+		}
+}
+//printf("\nremove ");
+//Alg(from,to);
+//z();
+return 1;
 }
 
