@@ -101,7 +101,7 @@ void ShowAll2()
 	if (nodes < 1)
 		return;
 
-	print_board();
+	DisplayBoard();
 	memset(done, 0, sizeof(done));
 
 	printf(" ply ");
@@ -110,14 +110,14 @@ void ShowAll2()
 	printf("%d", currentmax);
 	printf(" currentdepth %d ", GetCurrentDepth());
 	printf(" nodes ");
-	printf("%d", nodes);
+	printf("%ul", nodes);
 	printf(" side ");
 	printf("%d", side);
 	printf(" xside ");
 	printf("%d", xside);
 	printf("\n");
-	printf(" alpha %d", Alpha);
-	printf(" beta %d \n", Beta);
+	printf(" currentkey %d", currentkey);
+	printf(" currentlock %d \n", currentlock);
 
 	for (int z = ply; z > 0; z--)
 	{
@@ -125,7 +125,7 @@ void ShowAll2()
 			printf(" NULL ");
 		else
 		{
-			if (game_list[hply - z].capture == 6)
+			if (game_list[hply - z].capture == EMPTY)
 				Alg(game_list[hply - z].from, game_list[hply - z].to);
 			else
 				Alg2(game_list[hply - z].from, game_list[hply - z].to);
@@ -182,7 +182,7 @@ void p(BITBOARD bb)
 void ShowAll(int ply)
 {
 	move_data* g;
-	print_board();
+	DisplayBoard();
 	memset(done, 0, sizeof(done));
 
 	printf(" ply ");
@@ -204,6 +204,7 @@ void ShowAll(int ply)
 	printf("\n");
 
 	int j;
+	int c = 0;
 
 	printf(" non-caps \n");
 	for (int i = first_move[ply]; i < first_move[ply + 1]; i++)
@@ -218,8 +219,10 @@ void ShowAll(int ply)
 			printf(" score ");
 			printf("%d", g->score);
 			printf("\n");
+			c++;
 		}
 	}
+	printf("\n moves %d\n", c);
 	printf("\n");
 	/*
 	   for(int i=first_move[ply];i<first_move[ply + 1];i++)//realone
@@ -293,10 +296,18 @@ void ShowMoves(int p)
 
 int Debug(const int p)
 {
+		if(currentkey>2<<23)
+	{
+		printf("d");
+		z();
+		currentkey = GetKey();
+		return 0;
+	}
+		return 0;
 	//*
 	for (int x = 0; x < 64; x++)
 	{
-		if (!(mask[x] & bit_all) && b[x] < 6)
+		if (!(mask[x] & bit_all) && b[x] < EMPTY)
 		{
 			//Alg(x,x);
 			//z();
@@ -306,7 +317,7 @@ int Debug(const int p)
 
 	for (int x = 0; x < 64; x++)
 	{
-		if (b[x] == 6 && mask[x] & bit_all)
+		if (b[x] == EMPTY && mask[x] & bit_all)
 		{
 			Alg1(x);
 			printf(" units place %d ", p);
@@ -323,7 +334,7 @@ int Debug(const int p)
 	}
 
 	/*
-	if(color[pieces[0][5][0]]==1 || color[pieces[1][5][0]]==0)
+	if(color[pieces[0][K][0]]==1 || color[pieces[1][5][0]]==0)
 	{
 	  printf(" kingloc bug ");
 	  ShowAll2();
@@ -335,9 +346,9 @@ int Debug(const int p)
 	{
 		if (mask[x] & bit_pieces[0][1])
 			wn++;
-		if (mask[x] & bit_pieces[0][2])
+		if (mask[x] & bit_pieces[0][B])
 			wb++;
-		if (mask[x] & bit_pieces[0][3])
+		if (mask[x] & bit_pieces[0][R])
 			wr++;
 
 		if (wn > 2)
@@ -381,42 +392,42 @@ int Debug(const int p)
 		{
 			for (int x = 0; x < 2; x++)
 			{
-				if (total[s][1] > x && b[pieces[s][1][x]] != KNIGHT)
+				if (total[s][N] > x && b[pieces[s][N][x]] != KNIGHT)
 				{
 					printf(" bug place %d ", p);
-					printf(" pieces[s][1][x] %d ", pieces[s][1][x]);
+					printf(" pieces[s][N][x] %d ", pieces[s][N][x]);
 					printf("debug 4");
 					PrintBitBoard(bit_pieces[0][1]);
 					ShowAll2();
 				}
-				if (total[s][2] > x && b[pieces[s][2][x]] != BISHOP)
+				if (total[s][B] > x && b[pieces[s][B][x]] != BISHOP)
 				{
 					printf(" bug bishop ");
 					printf(" place %d ", p);
 					printf(" x %d ", x);
-					printf(" bishop[s][0] %d ", pieces[s][2][0]);
-					printf(" bishop[s][1] %d ", pieces[s][2][1]);
-					printf(" total %d ", total[s][2]);
+					printf(" bishop[s][0] %d ", pieces[s][B][0]);
+					printf(" bishop[s][1] %d ", pieces[s][B][1]);
+					printf(" total %d ", total[s][B]);
 					ShowAll2();
 				}
-				if (total[s][3] > x && b[pieces[s][3][x]] != ROOK)
+				if (total[s][R] > x && b[pieces[s][R][x]] != ROOK)
 				{
 					printf(" bug rook ");
-					printf(" rook[s][x] %d ", pieces[s][3][x]);
+					printf(" rook[s][x] %d ", pieces[s][R][x]);
 					printf(" place %d ", p);
 					ShowAll2();
 					printf("debug 6");
 				}
 			}
-			if (b[pieces[s][5][0]] != KING)
+			if (b[pieces[s][K][0]] != KING)
 			{
 				printf("bug no king");
-				Alg(pieces[0][5][0], pieces[1][5][0]);
+				Alg(pieces[0][K][0], pieces[1][K][0]);
 				printf(" place %d ", p);
 				ShowAll2();
 				return 1;
 			}
-			if (pieces[s][5][0] == -1)
+			if (pieces[s][K][0] == -1)
 			{
 				printf(" bug place %d ", p);
 				printf("no kingloc ");
@@ -467,7 +478,7 @@ void ShowAllEval(int ply)
 {
 	return;
 	move_data* g;
-	print_board();
+	DisplayBoard();
 	memset(done, 0, sizeof(done));
 
 	printf(" ply ");
@@ -493,7 +504,7 @@ void ShowAllEval(int ply)
 	{
 		if (MakeMove(move_list[i].from, move_list[i].to, move_list[i].flags))
 		{
-			//move_list[i].score = quiesce(-10000, 10000, 0);
+			//move_list[i].score = QuietSearch(-10000, 10000, 0);
 			move_list[i].score = eval(-10000, 10000);
 			UnMakeMove();
 		}
@@ -514,3 +525,17 @@ void ShowAllEval(int ply)
 	_getch();
 }
 
+//masks for ranks/file by square? unused
+/*
+void SetMaskDiags()
+{
+    for (int x = 0; x < 64; x++)
+        for (int y = 0; y < 64; y++)
+        {
+            if (nediag[x] == nediag[y])
+                SetBit(mask_nediag[x], y);
+            if (nwdiag[x] == nwdiag[y])
+                SetBit(mask_nwdiag[x], y);
+        }
+}
+*/
