@@ -1,9 +1,5 @@
 #include "globals.h"
 
-list1 queenlist[64][28];
-list1 rooklist[64][15];
-list1 bishoplist[64][14];
-
 int kingqueen[64][64];
 int kingknight[64][64];
 int kingking[64][64];
@@ -71,16 +67,6 @@ const int lsb_64_table[64] =
    20, 47, 38, 22, 17, 37, 36, 26
 };
 
-const int nwdiag[64] = {
-	 14,13,12,11,10, 9, 8, 7,
-	 13,12,11,10, 9, 8, 7, 6,
-	 12,11,10, 9, 8, 7, 6, 5,
-	 11,10, 9, 8, 7, 6, 5, 4,
-	 10, 9, 8, 7, 6, 5, 4, 3,
-	  9, 8, 7, 6, 5, 4, 3, 2,
-	  8, 7, 6, 5, 4, 3, 2, 1,
-	  7, 6, 5, 4, 3, 2, 1, 0 };
-
 const int colors[64] = {
 	 1,0,1,0,1,0,1,0,
 	 0,1,0,1,0,1,0,1,
@@ -90,6 +76,16 @@ const int colors[64] = {
 	 0,1,0,1,0,1,0,1,
 	 1,0,1,0,1,0,1,0,
 	 0,1,0,1,0,1,0,1 };
+
+const int nwdiag[64] = {
+	 14,13,12,11,10, 9, 8, 7,
+	 13,12,11,10, 9, 8, 7, 6,
+	 12,11,10, 9, 8, 7, 6, 5,
+	 11,10, 9, 8, 7, 6, 5, 4,
+	 10, 9, 8, 7, 6, 5, 4, 3,
+	  9, 8, 7, 6, 5, 4, 3, 2,
+	  8, 7, 6, 5, 4, 3, 2, 1,
+	  7, 6, 5, 4, 3, 2, 1, 0 };
 
 const int nediag[64] = {
 	 7, 8,9,10,11,12,13,14,
@@ -151,7 +147,6 @@ BITBOARD bit_kingmoves[64];
 //current position
 BITBOARD bit_pieces[2][7];
 BITBOARD bit_units[2];//pieces+pawns
-BITBOARD bit_color[2];
 BITBOARD bit_all;
 
 //current attacks
@@ -160,18 +155,16 @@ BITBOARD bit_rightcaptures[2];
 BITBOARD bit_pawnattacks[2];
 
 BITBOARD bit_colors;
+BITBOARD bit_color[2];
 
 BITBOARD mask_passed[2][64];
 BITBOARD mask_path[2][64];
 BITBOARD mask_backward[2][64];
+
 BITBOARD mask_ranks[2][8];
-
 BITBOARD mask_files[8];
-BITBOARD mask_rows[8];
-
 BITBOARD mask_cols[64];
 
-BITBOARD mask[64];
 BITBOARD mask_isolated[64];
 BITBOARD mask_adjacent[64];
 BITBOARD mask_squarepawn[2][64];
@@ -193,23 +186,29 @@ BITBOARD not_rank1;
 BITBOARD not_mask_files[8];
 BITBOARD not_mask_rows[8];
 
-BITBOARD mask_queenside;
-
+BITBOARD mask[64];
 BITBOARD not_mask[64];
 
-void SetMoves();
 void SetBit(BITBOARD& bb, int square);
 void SetBitFalse(BITBOARD& bb, int square);
 void PrintBitBoard(BITBOARD bb);
 void PrintCell(int x, BITBOARD bb);
 
+void SetColors();
+void SetPawnBits();
+void SetPawnMoves();
+void SetRanksFiles();
+void SetSquares();
+void SetKingPawns();
+void SetMoves();
+void SetChecks();
 void SetRanks();
-void SetKingMoves();
+void SetMaskPawns();
 void SetLinks();
-
-void SetDir();
+void SetDifference();
 void SetBetweenVector();
-void SetRowCol();
+
+void SetKingDistance();
 
 void SetBit(BITBOARD& bb, int square)
 {
@@ -254,51 +253,70 @@ void PrintCell(int x, BITBOARD bb)
 
 void SetBits()
 {
-	int x, y;
-
-	for (x = 0; x < 64; x++)
-	{
-		SetBit(mask[x], x);
-	}
+	SetColors();
 	SetRanks();
-	SetRowCol();
+	SetPawnMoves();
+	SetPawnBits();
+	SetRanksFiles();
+	SetSquares();
+	SetKingPawns();
+	SetChecks();
+	SetMaskPawns();
+	SetBetweenVector();
+	SetMoves();
+	SetDifference();
+	SetKingDistance();
+}
 
-	for (x = 0; x < 64; x++)
-	{
-		if (col[x] > 0)
-			SetBit(bit_adjacent[x], x - 1);
-		if (col[x] < 7)
-			SetBit(bit_adjacent[x], x + 1);
-	}
-
-	SetBit(mask_centre, D4);
-	SetBit(mask_centre, E4);
-	SetBit(mask_centre, D5);
-	SetBit(mask_centre, E4);
-
+void SetColors()
+{
 	bit_colors = 0;
-	for (x = 0; x < 64; x++)
+	for (int x = 0; x < 64; x++)
 	{
 		if (colors[x] == 1)
 			SetBit(bit_colors, x);
 	}
 
-	for (x = 0; x < 64; x++)
+	for (int x = 0; x < 64; x++)
 	{
 		if (colors[x] == 0)
 			SetBit(bit_color[0], x);
 		if (colors[x] == 1)
 			SetBit(bit_color[1], x);
 	}
-	memset(bit_pawncaptures, 0, sizeof(bit_pawncaptures));
-	memset(bit_knightmoves, 0, sizeof(bit_knightmoves));
-	memset(bit_bishopmoves, 0, sizeof(bit_bishopmoves));
-	memset(bit_rookmoves, 0, sizeof(bit_rookmoves));
-	memset(bit_queenmoves, 0, sizeof(bit_queenmoves));
-	memset(bit_kingmoves, 0, sizeof(bit_kingmoves));
+}
 
-	//current attacks
-	memset(bit_pawnattacks, 0, sizeof(bit_pawnattacks));
+void SetRanks()
+{
+	for (int x = 0; x < 64; x++)
+	{
+		squares[0][x] = x;
+		squares[1][x] = (7 - row[x]) * 8 + col[x];
+		rank[0][x] = row[x];
+		rank[1][x] = 7 - row[x];
+	}
+
+	for (int s = 0; s < 2; s++)
+		for (int x = 0; x < 64; x++)
+		{
+			lastsquare[0][x] = col[x] + A8;
+			lastsquare[1][x] = col[x];
+		}
+
+	memset(adjfile, 0, sizeof(adjfile));
+	for (int x = 0; x < 64; x++)
+	{
+		for (int y = 0; y < 64; y++)
+		{
+			if (abs(col[x] - col[y]) < 2)
+				adjfile[x][y] = 1;
+		}
+	}
+}
+
+void SetPawnMoves()
+{
+	int x;
 
 	for (x = 0; x < 64; x++)
 	{
@@ -317,6 +335,32 @@ void SetBits()
 			if (row[x] > 0) { pawnright[1][x] = x - 7; }
 		}
 	}
+	for (x = 0; x < 64; x++)
+	{
+		if (row[x] < 7)
+		{
+			pawnplus[0][x] = x + 8;
+		}
+		if (row[x] < 6)
+		{
+			pawndouble[0][x] = x + 16;
+		}
+		if (row[x] > 0)
+		{
+			pawnplus[1][x] = x - 8;
+		}
+		if (row[x] > 1)
+		{
+			pawndouble[1][x] = x - 16;
+
+		}
+	}
+}
+
+void SetPawnBits()
+{
+	int x;
+	memset(bit_pawncaptures, 0, sizeof(bit_pawncaptures));
 
 	for (x = 0; x < 64; x++)
 	{
@@ -352,34 +396,17 @@ void SetBits()
 		bit_pawndefends[0][x] = bit_pawncaptures[1][x];
 		bit_pawndefends[1][x] = bit_pawncaptures[0][x];
 	}
-	for (x = 0; x < 64; x++)
-	{
-		if (row[x] < 7)
-		{
-			pawnplus[0][x] = x + 8;
-		}
-		if (row[x] < 6)
-		{
-			pawndouble[0][x] = x + 16;
-		}
-		if (row[x] > 0)
-		{
-			pawnplus[1][x] = x - 8;
-		}
-		if (row[x] > 1)
-		{
-			pawndouble[1][x] = x - 16;
+}
 
-		}
-	}
+void SetRanksFiles()
+{
+	int x, y;
 
 	for (y = 0; y < 8; y++)
 		for (x = 0; x < 64; x++)
 		{
 			if (col[x] == y)
 				SetBit(mask_files[y], x);
-			if (row[x] == y)
-				SetBit(mask_rows[y], x);
 			if (row[x] == y)
 			{
 				SetBit(mask_ranks[0][y], x);
@@ -410,28 +437,58 @@ void SetBits()
 	not_h_file = ~mask_files[7];
 	not_rank6 = ~mask_ranks[0][6];
 	not_rank1 = ~mask_ranks[0][1];
-
 	mask_rookfiles = mask_files[0] | mask_files[7];
+}
 
-	SetBetweenVector();
-	SetMoves();
-	SetKingMoves();
-	SetLinks();
-	SetDir();
-
-	for (x = 0; x < 64; x++)
+void SetSquares()
+{
+	for (int x = 0; x < 64; x++)
+	{
+		SetBit(mask[x], x);
+	}
+	for (int x = 0; x < 64; x++)
+	{
+		if (col[x] > 0)
+			SetBit(bit_adjacent[x], x - 1);
+		if (col[x] < 7)
+			SetBit(bit_adjacent[x], x + 1);
+	}
+	for (int x = 0; x < 64; x++)
+	{
+		if (col[x] > 0)
+			SetBit(mask_adjacent[x], x - 1);
+		if (col[x] < 7)
+			SetBit(mask_adjacent[x], x + 1);
+	}
+	for (int x = 0; x < 64; x++)
 	{
 		if (row[x] == 0 || row[x] == 7 || col[x] == 0 || col[x] == 7)
 			SetBit(mask_edge, x);
 	}
-	for (x = 0; x < 64; x++)
+	for (int x = 0; x < 64; x++)
 	{
 		if (col[x] < 3)
 			SetBit(mask_abc, x);
 		if (col[x] > 4)
 			SetBit(mask_def, x);
 	}
+	SetBit(mask_centre, D4);
+	SetBit(mask_centre, E4);
+	SetBit(mask_centre, D5);
+	SetBit(mask_centre, E4);
 
+	SetBit(mask_corner, A1);
+	SetBit(mask_corner, A8);
+	SetBit(mask_corner, H1);
+	SetBit(mask_corner, H8);
+
+	not_mask_corner = ~mask_corner;
+	not_mask_rookfiles = ~mask_rookfiles;
+	not_mask_edge = ~mask_edge;
+}
+
+void SetKingPawns()
+{
 	SetBit(mask_queenpawns[0], A2);
 	SetBit(mask_queenpawns[0], A3);
 	SetBit(mask_queenpawns[0], A4);
@@ -483,19 +540,13 @@ void SetBits()
 	SetBit(mask_kingpawns[1], H6);
 	SetBit(mask_kingpawns[1], H5);
 	SetBit(mask_kingpawns[1], H4);
+}
 
-	SetBit(mask_corner, A1);
-	SetBit(mask_corner, A8);
-	SetBit(mask_corner, H1);
-	SetBit(mask_corner, H8);
-
-	not_mask_corner = ~mask_corner;
-	not_mask_rookfiles = ~mask_rookfiles;
-	not_mask_edge = ~mask_edge;
-
+void SetChecks()
+{
 	BITBOARD b1;
 	int sq = -1;
-	int z;
+	int x, y, z;
 
 	for (x = 0; x < 64; x++)
 		for (y = 0; y < 64; y++)
@@ -545,7 +596,7 @@ void SetBits()
 		}
 }
 
-void SetDir()
+void SetDifference()
 {
 	int x, y;
 
@@ -572,6 +623,12 @@ void SetDir()
 
 void SetMoves()
 {
+	memset(bit_knightmoves, 0, sizeof(bit_knightmoves));
+	memset(bit_bishopmoves, 0, sizeof(bit_bishopmoves));
+	memset(bit_rookmoves, 0, sizeof(bit_rookmoves));
+	memset(bit_queenmoves, 0, sizeof(bit_queenmoves));
+	memset(bit_kingmoves, 0, sizeof(bit_kingmoves));
+
 	for (int x = 0; x < 64; x++)
 	{
 		bit_knightmoves[x] = 0;
@@ -680,14 +737,9 @@ void SetBetweenVector()
 		}
 }
 
-void SetRowCol()
+void SetMaskPawns()
 {
 	int x, y;
-	for (x = 0; x < 64; x++)
-	{
-		if (col[x] < 4)
-			SetBit(mask_queenside, x);
-	}
 
 	for (x = 0; x < 64; x++)
 	{
@@ -756,13 +808,7 @@ void SetRowCol()
 			}
 		}
 	}
-	for (x = 0; x < 64; x++)
-	{
-		if (col[x] > 0)
-			SetBit(mask_adjacent[x], x - 1);
-		if (col[x] < 7)
-			SetBit(mask_adjacent[x], x + 1);
-	}
+
 	for (int x = 0; x < 64; x++)
 	{
 		for (y = 0; y < 64; y++)
@@ -773,7 +819,10 @@ void SetRowCol()
 				SetBit(mask_squareking[1][x], y);
 		}
 	}
+}
 
+void SetTrappedMinorPiece()
+{
 	memset(bishop_a7, 0, sizeof(bishop_a7));
 	memset(bishop_h7, 0, sizeof(bishop_h7));
 	memset(knight_a7, 0, sizeof(knight_a7));
@@ -798,33 +847,8 @@ void SetRowCol()
 	SetBit(knight_h7[1], G2);
 }
 
-void SetRanks()
+void SetKingDistance()
 {
-	for (int x = 0; x < 64; x++)
-	{
-		squares[0][x] = x;
-		squares[1][x] = (7 - row[x]) * 8 + col[x];
-		rank[0][x] = row[x];
-		rank[1][x] = 7 - row[x];
-	}
-
-	for (int s = 0; s < 2; s++)
-		for (int x = 0; x < 64; x++)
-		{
-			lastsquare[0][x] = col[x] + A8;
-			lastsquare[1][x] = col[x];
-		}
-
-	memset(adjfile, 0, sizeof(adjfile));
-	for (int x = 0; x < 64; x++)
-	{
-		for (int y = 0; y < 64; y++)
-		{
-			if (abs(col[x] - col[y]) < 2)
-				adjfile[x][y] = 1;
-		}
-	}
-
 	memset(kingqueen, 0, sizeof(kingqueen));
 	for (int x = 0; x < 64; x++)
 	{
@@ -850,69 +874,6 @@ void SetRanks()
 		{
 			kingking[x][y] = kingtaxi[difference[x][y]];
 		}
-	}
-}
-
-void SetKingMoves()
-{
-	int count = 0;
-
-	for (int x = 0; x < 64; x++)
-	{
-		count = 0;
-		if (row[x] < 6 && col[x] < 7)
-			knightmoves[x][count++] = x + 17;
-		if (row[x] < 7 && col[x] < 6)
-			knightmoves[x][count++] = x + 10;
-		if (row[x] < 6 && col[x]>0)
-			knightmoves[x][count++] = x + 15;
-		if (row[x] < 7 && col[x]>1)
-			knightmoves[x][count++] = x + 6;
-		if (row[x] > 1 && col[x] < 7)
-			knightmoves[x][count++] = x - 15;
-		if (row[x] > 0 && col[x] < 6)
-			knightmoves[x][count++] = x - 6;
-		if (row[x] > 1 && col[x] > 0)
-			knightmoves[x][count++] = x - 17;
-		if (row[x] > 0 && col[x] > 1)
-			knightmoves[x][count++] = x - 10;
-	}
-	for (int x = 0; x < 64; x++)
-	{
-		count = 0;
-		for (int dir = 0; dir < 8; dir++)
-		{
-			kmoves[x][dir] = -1;
-		}
-
-		if (col[x] > 0) kmoves[x][WEST] = x - 1;
-		if (col[x] < 7) kmoves[x][EAST] = x + 1;
-		if (row[x] > 0) kmoves[x][SOUTH] = x - 8;
-		if (row[x] < 7) kmoves[x][NORTH] = x + 8;
-		if (col[x] < 7 && row[x] < 7) kmoves[x][NE] = x + 9;
-		if (col[x] > 0 && row[x] < 7) kmoves[x][NW] = x + 7;
-		if (col[x] > 0 && row[x] > 0) kmoves[x][SW] = x - 9;
-		if (col[x] < 7 && row[x] > 0) kmoves[x][SE] = x - 7;
-	}
-	for (int x = 0; x < 64; x++)
-	{
-		count = 0;
-		if (col[x] > 0)
-			kingmoves[x][count++] = x - 1;
-		if (col[x] < 7)
-			kingmoves[x][count++] = x + 1;
-		if (row[x] > 0)
-			kingmoves[x][count++] = x - 8;
-		if (row[x] < 7)
-			kingmoves[x][count++] = x + 8;
-		if (col[x] < 7 && row[x] < 7)
-			kingmoves[x][count++] = x + 9;
-		if (col[x] > 0 && row[x] < 7)
-			kingmoves[x][count++] = x + 7;
-		if (col[x] > 0 && row[x] > 0)
-			kingmoves[x][count++] = x - 9;
-		if (col[x] < 7 && row[x] > 0)
-			kingmoves[x][count++] = x - 7;
 	}
 }
 
