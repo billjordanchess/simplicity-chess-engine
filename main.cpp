@@ -12,7 +12,7 @@
 
 void GenCheck();
 void GenCaptures();
-void GenNon();
+void GenNonCaptures();
 
 void ShowHelp();
 void SetUp();
@@ -57,7 +57,7 @@ void Free();
 int main()
 {
 	printf("Simplicity Chess Engine 1.5\n");
-	printf("Version new reduce , 21/3/25\n");
+	printf("Version new reduce , 10/4/25\n");
 	printf("Bill Jordan 2025\n");
 	printf("FIDE Master and 2021 state champion.\n");
 	printf("I have published a number of chess books\n");
@@ -83,17 +83,17 @@ int main()
 
 	RandomizeHash();
 	SetBits();
-	NewPosition();
 	SetUp();
+	StartGame();
+	SetMaterial();
 	srand(time(NULL));
-
 
 	GenCheck();
 	computer_side = EMPTY;
 	player[0] = 0;
 	player[1] = 0;
 	max_time = 1 << 25;
-	max_depth = 4;
+	max_depth = 8;
 
 	while (true)
 	{
@@ -300,7 +300,7 @@ int main()
 
 int ParseMove(char* s)
 {
-	int start, dest, i;
+	int from, to, i;
 
 	if (s[0] < 'a' || s[0] > 'h' ||
 		s[1] < '0' || s[1] > '9' ||
@@ -308,13 +308,13 @@ int ParseMove(char* s)
 		s[3] < '0' || s[3] > '9')
 		return -1;
 
-	start = s[0] - 'a';
-	start += ((s[1] - '0') - 1) * 8;
-	dest = s[2] - 'a';
-	dest += ((s[3] - '0') - 1) * 8;
+	from = s[0] - 'a';
+	from += ((s[1] - '0') - 1) * 8;
+	to = s[2] - 'a';
+	to += ((s[3] - '0') - 1) * 8;
 
 	for (i = 0; i < first_move[1]; i++)
-		if (move_list[i].from == start && move_list[i].to == dest)
+		if (move_list[i].from == from && move_list[i].to == to)
 		{
 			return i;
 		}
@@ -629,7 +629,7 @@ void DisplayResult()
 			flag=1;
 			break;
 		}
-	if (pawn_mat[0] == 0 && pawn_mat[1] == 0 && piece_mat[0] <= 3 && piece_mat[1] <= 3)
+	if (pawn_mat[0] == 0 && pawn_mat[1] == 0 && piece_mat[0] <= BVAL && piece_mat[1] <= BVAL)
 	{
 		printf("1/2-1/2 {Stalemate}\n");
 
@@ -676,12 +676,13 @@ void DisplayResult()
 
 int Reps()
 {
-	int r = 0;
+	int repeats = 0;
 
 	for (int i = hply; i >= hply - fifty; i -= 2)
-		if (game_list[i].hash == currentkey && game_list[i].lock == currentlock)
-			r++;
-	return r;
+		if (game_list[i].hash == currentkey && 
+			game_list[i].lock == currentlock)
+			repeats++;
+	return repeats;
 }
 
 int LoadDiagram(char* file, int num)
@@ -849,7 +850,7 @@ int GetTime()
 	return (timebuffer.time * 1000) + timebuffer.millitm;
 }
 
-char* MoveString(int start, int dest, int promote)
+char* MoveString(int from, int to, int promote)
 {
 	static char str[6];
 
@@ -871,18 +872,18 @@ char* MoveString(int start, int dest, int promote)
 			break;
 		}
 		sprintf_s(str, "%c%d%c%d%c",
-			col[start] + 'a',
-			row[start] + 1,
-			col[dest] + 'a',
-			row[dest] + 1,
+			col[from] + 'a',
+			row[from] + 1,
+			col[to] + 'a',
+			row[to] + 1,
 			c);
 	}
 	else
 		sprintf_s(str, "%c%d%c%d",
-			col[start] + 'a',
-			row[start] + 1,
-			col[dest] + 'a',
-			row[dest] + 1);
+			col[from] + 'a',
+			row[from] + 1,
+			col[to] + 'a',
+			row[to] + 1);
 	return str;
 }
 
@@ -895,96 +896,6 @@ void GenCheck()
 	else
 	{
 		GenCaptures();
-		GenNon();
+		GenNonCaptures();
 	}
 }
-
-/*
-#include <iostream>
-#include <sstream>
-#include <string>
-
-void SetBoardToStartingPosition();
-void SetBoardFromFEN(const std::string& fen);
-void MakeMove(const std::string& move);
-std::string SearchBestMove(int depth, int movetime);
-void WinBoardLoop(); // Your existing WinBoard code
-
-void HandleUciPosition(const std::string& command) {
-    std::istringstream ss(command);
-    std::string token;
-    ss >> token; // "position"
-    
-    std::string positionType;
-    ss >> positionType; // "startpos" or "fen"
-
-    if (positionType == "startpos") {
-        SetBoardToStartingPosition();
-    } else if (positionType == "fen") {
-        std::string fen;
-        while (ss >> token && token != "moves") {
-            fen += token + " ";
-        }
-        SetBoardFromFEN(fen);
-    }
-
-    // Read moves (if any)
-    while (ss >> token) {
-        MakeMove(token);
-    }
-}
-
-void HandleUciGo(const std::string& command) {
-    int depth = -1;
-    int movetime = -1;
-
-    std::istringstream ss(command);
-    std::string token;
-    ss >> token; // "go"
-
-    while (ss >> token) {
-        if (token == "depth") {
-            ss >> depth;
-        } else if (token == "movetime") {
-            ss >> movetime;
-        }
-    }
-
-    std::string bestMove = SearchBestMove(depth, movetime);
-    std::cout << "bestmove " << bestMove << std::endl;
-}
-
-void UciLoop() {
-    std::string input;
-    while (std::getline(std::cin, input)) {
-        if (input == "uci") {
-            std::cout << "id name MyEngine" << std::endl;
-            std::cout << "id author MyName" << std::endl;
-            std::cout << "uciok" << std::endl;
-        } else if (input == "isready") {
-            std::cout << "readyok" << std::endl;
-        } else if (input.rfind("position", 0) == 0) {
-            HandleUciPosition(input);
-        } else if (input.rfind("go", 0) == 0) {
-            HandleUciGo(input);
-        } else if (input == "stop") {
-            // Handle stopping search if necessary
-        } else if (input == "quit") {
-            break;
-        }
-    }
-}
-
-int main() {
-    std::string firstCommand;
-    std::getline(std::cin, firstCommand);
-
-    if (firstCommand == "uci") {
-        UciLoop();
-    } else {
-        WinBoardLoop(); // Default to WinBoard mode
-    }
-    return 0;
-}
-
-*/
