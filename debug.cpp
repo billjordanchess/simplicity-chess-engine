@@ -104,26 +104,20 @@ void ShowAll2()
 	DisplayBoard();
 	memset(done, 0, sizeof(done));
 
-	printf(" ply ");
-	printf("%d", ply);
-	printf(" current max ");
-	printf("%d", currentmax);
+	printf(" ply %d", ply);
+	printf(" current max %d", currentmax);
 	printf(" currentdepth %d ", GetCurrentDepth());
-	printf(" nodes ");
-	printf("%ul", nodes);
-	printf(" side ");
-	printf("%d", side);
-	printf(" xside ");
-	printf("%d", xside);
-	printf("\n");
+	printf(" nodes %d ", nodes);
+	printf(" side %d", side);
+	printf(" xside %d\n", xside);
 	printf(" currentkey %d", currentkey);
 	printf(" currentlock %d \n", currentlock);
 
 	for (int z = ply; z > 0; z--)
 	{
-		if (z>1 && first_move[z-1] == first_move[z])
-			printf(" NULL ");
-		else
+		//if (z>1 && first_move[z-1] == first_move[z])
+		//	printf(" NULL ");
+		//else
 		{
 			if (game_list[hply - z].capture == EMPTY)
 				Alg(game_list[hply - z].from, game_list[hply - z].to);
@@ -134,7 +128,7 @@ void ShowAll2()
 	}
 	printf("\n  order ");
 	for (int z = 1; z <= ply; z++)
-		printf("%d ", PlyMove[z]);
+		printf(" %d ", PlyMove[z]);
 
 	printf("\n");
 	printf(" extend ");
@@ -296,15 +290,6 @@ void ShowMoves(int p)
 
 int Debug(const int p)
 {
-		if(currentkey>2<<23)
-	{
-		printf("d");
-		z();
-		currentkey = GetKey();
-		return 0;
-	}
-		return 0;
-	//*
 	for (int x = 0; x < 64; x++)
 	{
 		if (!(mask[x] & bit_all) && b[x] < EMPTY)
@@ -505,7 +490,7 @@ void ShowAllEval(int ply)
 		if (MakeMove(move_list[i].from, move_list[i].to, move_list[i].flags))
 		{
 			//move_list[i].score = QuietSearch(-10000, 10000, 0);
-			move_list[i].score = eval(-10000, 10000);
+			move_list[i].score = Eval(-10000, 10000);
 			UnMakeMove();
 		}
 	}
