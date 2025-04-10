@@ -42,6 +42,7 @@ struct hashp
 	char from;
 	char to;
 	char age;
+	unsigned int flags;
 };
 
 hashp* hashpos[2];
@@ -53,8 +54,7 @@ struct hashpawn
 	int score[2];
 	int defence[2][3];
 	BITBOARD passed_pawns[2];
-	BITBOARD pa[2];
-	BITBOARD bp[2];
+	BITBOARD pawn_attacks[2];
 };
 
 hashpawn hashpawns[MAXPAWNHASH];
@@ -105,7 +105,7 @@ int GetHashScore(const int s)
 	return hashpos[s][currentkey].score;
 }
 
-void AddHash(const int s, const int depth, const int score, const int type, const int from, const int to)
+void AddHash(const int s, const int depth, const int score, const int type, const int from, const int to, const unsigned int flags)
 {
 	hashp* ptr = &hashpos[s][currentkey];
 	if (ptr->hashlock == 0)
@@ -117,6 +117,7 @@ void AddHash(const int s, const int depth, const int score, const int type, cons
 		ptr->from = from;
 		ptr->to = to;
 		ptr->age = turn;
+		ptr->flags = flags;
 
 		hashpositions[s]++;
 
@@ -133,12 +134,15 @@ void AddHash(const int s, const int depth, const int score, const int type, cons
 		ptr->from = from;
 		ptr->to = to;
 		ptr->age = turn;
+		ptr->flags = flags;
 	}
 	else
 	{
 		collisions++;
-		if (ptr->type == EXACT && type != EXACT)
+		if (ptr->type == EXACT && type != EXACT && ptr->age == turn)
+		{
 			return;
+		}
 
 		ptr->hashlock = currentlock;
 		ptr->score = score;
@@ -147,6 +151,7 @@ void AddHash(const int s, const int depth, const int score, const int type, cons
 		ptr->from = from;
 		ptr->to = to;
 		ptr->age = turn;
+		ptr->flags = flags;
 	}
 	return;
 }
@@ -206,6 +211,7 @@ int LookUp(const int s, const int depth, const int alpha, const int beta)
 	}
 	hash_move.from = ptr->from;
 	hash_move.to = ptr->to;
+	hash_move.flags = ptr->flags;
 
 	if (depth > ptr->depth)
 	{
@@ -252,6 +258,7 @@ int LookUp2(const int s)
 	hash_move.score = ptr->score;
 	hash_move.from = ptr->from;
 	hash_move.to = ptr->to;
+	hash_move.flags = ptr->flags;
 	return 0;
 }
 
@@ -297,6 +304,20 @@ void AddPawnHash(const int s1, const int s2, const BITBOARD p1, const BITBOARD p
 	return;
 }
 
+void AddPawnKey(const int s, const int x)
+{
+	currentpawnkey ^= pawnhash[s][x];
+	currentpawnlock ^= pawnlock[s][x];
+}
+
+void AddPawnKeys(const int s, const int x, const int y)
+{
+	currentpawnkey ^= pawnhash[s][x];
+	currentpawnkey ^= pawnhash[s][y];
+	currentpawnlock ^= pawnlock[s][x];
+	currentpawnlock ^= pawnlock[s][y];
+}
+
 bool LookUpPawn()
 {
 	if (hashpawns[currentpawnkey].hashlock == currentpawnlock)
@@ -316,28 +337,9 @@ BITBOARD GetHashPassed(const int s)
 	return hashpawns[currentpawnkey].passed_pawns[s];
 }
 
-int GetHashDefence(const int s, const int n)
+int GetHashDefence(const int s, const int board_side)
 {
-	return hashpawns[currentpawnkey].defence[s][n];
-}
-
-void AddHashbp(const int s, const BITBOARD bp)
-{
-	hashpawns[currentpawnkey].bp[s] = bp;
-}
-
-void AddPawnKey(const int s, const int x)
-{
-	currentpawnkey ^= pawnhash[s][x];
-	currentpawnlock ^= pawnlock[s][x];
-}
-
-void AddPawnKeys(const int s, const int x, const int y)
-{
-	currentpawnkey ^= pawnhash[s][x];
-	currentpawnkey ^= pawnhash[s][y];
-	currentpawnlock ^= pawnlock[s][x];
-	currentpawnlock ^= pawnlock[s][y];
+	return hashpawns[currentpawnkey].defence[s][board_side];
 }
 
 void AddKingHash(const int s, const int value)
@@ -352,12 +354,12 @@ void AddQueenHash(const int s, const int value)
 
 void AddPawnAttackHash(const int s, const BITBOARD value)
 {
-	hashpawns[currentpawnkey].pa[s] = value;
+	hashpawns[currentpawnkey].pawn_attacks[s] = value;
 }
 
 BITBOARD GetHashPawnAttacks(const int s)
 {
-	return hashpawns[currentpawnkey].pa[s];
+	return hashpawns[currentpawnkey].pawn_attacks[s];
 }
 
 move_data GetHashMove()
@@ -367,13 +369,16 @@ move_data GetHashMove()
 
 void HashTest()
 {
-	/*
-if(hashpos[1][6495712].from == D5 && hashpos[1][6495712].to==C4)
+	//*
+if(//hashpos[1][6495712].from == D5 && hashpos[1][6495712].to==C4 ||
+hashpos[1][5690949].from == E8 && hashpos[1][2610156].to==D8 ||
+hashpos[1][6495712].from == D5 && hashpos[1][6495712].to==C4
+)
 {
-	Alg(hashpos[1][6495712].from,hashpos[1][6495712].to);
+	Alg(hashpos[1][396057].from,hashpos[1][1394300].to);
 	z();
 	//ShowAll(ply);
 	nodes=nodes;
 }
-*/
+//*/
 }
