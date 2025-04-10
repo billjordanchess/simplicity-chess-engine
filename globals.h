@@ -115,8 +115,8 @@ extern unsigned int MATETHREAT;
 
 #define BISHOP_PAIR 25
 
-#define KINGSIDE 1
-#define QUEENSIDE 2
+#define KINGSIDE 0
+#define QUEENSIDE 1
 #define KINGOPPOSITE 3
 #define QUEENOPPOSITE 4
 
@@ -184,8 +184,6 @@ const int BETA = 1;
 extern int fixed_depth;
 
 extern int list[2][8];
-extern int pawnlist[2][8];
-extern int pawns[2];
 extern int table_score[2];
 extern int kingside[2];
 extern int queenside[2];
@@ -224,7 +222,7 @@ typedef struct
 {
 	int from;
 	int to;
-	int flags;
+	unsigned int flags;
 	int score;
 }lookup_move;
 
@@ -252,7 +250,6 @@ extern list1 bishoplist[64][14];
 void SetLinks();
 
 /* Gen.cpp */
-void Gen();
 void GenPromote(const int from, const int to);
 bool MakeMove(const int from, const int to, const int flags);
 void UnMakeMove();
@@ -266,13 +263,13 @@ int Reps();
 int Reps2();
 
 /* eval.cpp */
-int eval(const int alpha, const int beta);
+int Eval(const int alpha, const int beta);
 
 /* main.cpp */
 int GetTime();
 int main();
 int ParseMove(char* s);
-char* MoveString(int start, int dest, int promote);
+char* MoveString(int from, int to, int promote);
 void DisplayBoard();
 void Xboard();
 
@@ -326,7 +323,6 @@ extern BITBOARD currentpawnkey, currentpawnlock;
 //bitboard.cpp
 extern BITBOARD mask_squarepawn[2][64];
 extern BITBOARD mask_squareking[2][64];
-extern BITBOARD mask_queenside;
 extern BITBOARD mask_edge;
 extern BITBOARD mask_corner;
 
@@ -370,8 +366,6 @@ extern BITBOARD mask_files[8];
 extern BITBOARD mask_rookfiles;
 extern BITBOARD mask_cols[64];
 
-extern BITBOARD mask_rows[8];
-extern BITBOARD mask[64];
 extern BITBOARD mask_isolated[64];
 extern BITBOARD mask_left_col[64];
 extern BITBOARD mask_right_col[64];
@@ -389,6 +383,7 @@ extern BITBOARD mask_queenpawns[2];
 
 extern BITBOARD mask_moves[64][56];
 
+extern BITBOARD mask[64];
 extern BITBOARD not_mask[64];
 extern BITBOARD not_mask_rookfiles;
 extern BITBOARD not_mask_edge;
@@ -403,14 +398,12 @@ extern BITBOARD not_rank1;
 
 #define BITBOARD unsigned __int64
 
-extern int kmoves[64][8];
+extern int linemoves[64][8];
 extern int knightmoves[64][8];
 extern int kingmoves[64][8];
 
 extern int piece_mat[2];
 extern int pawn_mat[2];
-extern int start_piece_mat[2];
-extern int start_pawn_mat[2];
 
 extern int captures[MAX_PLY];
 extern int extend[MAX_PLY];
@@ -424,7 +417,6 @@ extern int ply;
 extern int currentmax;
 
 extern int drawn;
-extern int Num[2];
 
 extern int KingPawn[2][64];
 extern int pawn_score[64];
@@ -443,7 +435,6 @@ extern const int col[64];
 extern const int row[64];
 extern const int nwdiag[64];
 extern const int nediag[64];
-extern const int board[64];
 
 extern int rank[2][64];
 extern int lastsquare[2][64];
@@ -487,7 +478,6 @@ extern int castle_dest[64];
 
 extern int knight_total[64];
 extern int king_total[64];
-extern int queen_total[64];
 
 extern int history[64][64];
 extern int check_history[6][64];
@@ -505,7 +495,7 @@ BITBOARD GetPawnKey();
 BITBOARD GetPawnLock();
 void AddKey(const int, const int, const int);
 void AddKeys(const int s, const int p, const int x, const int y);
-void AddHash(const int, const int, const int, const int, const int, const int);
+void AddHash(const int, const int, const int, const int, const int, const int, const unsigned int);
 
 void AddPawnHash(const int s1, const int s2, const BITBOARD, const BITBOARD);
 int GetHashPawn(const int s);
@@ -561,17 +551,17 @@ BITBOARD GetHashPawnAttacks(const int s);
 void AddPawnAttackHash(const int s, const BITBOARD value);
 
 void GenCapsChecks(const int, const int);
-void GenCaps(const int);
+void GenQuietCaptures(const int);
 //int GenRecaptures(const int alpha, const int);
 
 bool Attack(const int s, const int sq);
 bool CheckAttack(const int s, const int sq);
 bool LineAttack(const int s, const int sq);
-bool IsPinned1(const int s, const int sq, const int pinned);
-bool IsPinned2(const int s, const int sq, const int pinned, const int);
+bool isPinned(const int s, const int sq, const int pinned);
+bool isPinnedLinePiece(const int s, const int sq, const int pinned, const int);
 
-void UpdatePawn(const int s, const int start, const int dest);
-void UpdatePiece(const int s, const int p, const int start, const int dest);
+void UpdatePawn(const int s, const int from, const int to);
+void UpdatePiece(const int s, const int p, const int from, const int to);
 void RemovePiece(const int s, const int p, const int sq);
 void AddPiece(const int s, const int p, const int sq);
 
@@ -583,7 +573,7 @@ int LookUp2(const int s);
 
 int BestCapture(const int, const int, BITBOARD);
 int BestCaptureSquare(const int s, const int xs, const int sq, const int p);
-int BestCapture2(const int s, const int xs, BITBOARD bu);
+int BestCapture2(const int s, const int xs, BITBOARD bit_targets);
 
 int GetThreatMove(const int s, const int xs, int&, int&);
 int MakeThreat(const int s, const int sx, const int threat_start, const int threat_dest);
@@ -604,7 +594,7 @@ int BlockedPawns(const int s, const int x);
 int SafeKingMoves(const int, const int);
 
 void MoveAttacked(const int sq, const int ply);
-int BestThreat(const int s, const int xs, const int diff);
+bool BestThreat(const int s, const int xs, const int diff);
 
 int GetScore2(const int s, const int xs, const int n);
 int Score(const int s, const int xs);
@@ -613,7 +603,7 @@ int GenKey(const int s, const int xs, const int n);
 void Evasion(const int);
 void Evasion2(const int n);
 
-void AddHashbp(const int s,const BITBOARD bp);
+void AddHashbp(const int s,const BITBOARD blocking_pawns);
 
 extern int scale[200];
 extern int h_check[64][64];
@@ -627,8 +617,6 @@ extern int stats_count[100];
 extern int stats_killers[2];
 extern int total_killers[2];
 
-extern int null_depth[48];
-
 extern int PlyMove[MAX_PLY];
 extern int PlyType[MAX_PLY];
 
@@ -636,10 +624,6 @@ extern int endmatrix[10][3][10][3];
 extern int kingloc[64];
 
 int GetHashDefence(const int s, const int n);
-
-//-BITBOARD Disco(const int s, const int sq); 
-
-void SetNullDepth();
 
 void SetUp();
 
@@ -655,6 +639,7 @@ extern int centi_pawns[9];
 extern int centi_pieces[104];
 
 #define PVAL 1
+#define NVAL 2
 #define BVAL 3
 #define RVAL 5
 #define QVAL 9
@@ -664,9 +649,22 @@ extern int p_value[6];
 
 int GetLowestAttacker(const int s, const int sq);
 int GetNextAttacker(const int s, const int sq);
-int SEESearch(int s,int a,const int sq);
+int SEE(int s,int a,const int sq);
 
 void HashTest();
+
+void EvadeQuiet(const int checker);
+void EvadeCapture(const int checker);
+
+bool MakeQuietMove(const int from, const int to, const int flags);
+void UnMakeQuietMove();
+
+extern const int px[6];
+extern const int nx[6];
+extern const int bx[6];
+extern const int rx[6];
+extern const int qx[6];
+extern const int kx[6];
 
 
 
