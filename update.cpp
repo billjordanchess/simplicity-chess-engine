@@ -1,22 +1,7 @@
 #pragma once
 #include "globals.h"
 
-int index[64];
-
-/*
-BTBOARD old = bit_all;
-bit_all &= not_mask[start];
-bit_all |= mask[dest];
-if (Attack(side, pieces[xside][5][0]))
-{
-bit_all = old;
-return false;
-}
-bit_all = old;
-
-
-at top of MakeMove and MakeCapture
-*/
+static int index[64];
 
 void UnMakeCapture();
 void AfterCastle();
@@ -79,15 +64,22 @@ void RemovePiece(const int s, const int p, const int sq)
 
 	if (index[sq] < total[s][p])
 	{
-		pieces[s][p][index[sq]] = pieces[s][p][total[s][p]];
-		index[pieces[s][p][total[s][p]]] = 0;
+		for(int x=0;x< total[s][p];x++)
+		{
+			if(pieces[s][p][x]==sq)
+			{
+		pieces[s][p][x] = pieces[s][p][total[s][p]];
+		index[pieces[s][p][x]] = x;
+		break;
+			}
+		}
 	}
-
 	piece_mat[s] -= piece_value[p];
 }
 
 void AddPiece(const int s, const int p, const int sq)
 {
+	//Debug(5);
 	b[sq] = p;
 	AddKey(s, p, sq);
 	bit_units[s] |= mask[sq];
@@ -105,6 +97,7 @@ void AddPiece(const int s, const int p, const int sq)
 	pieces[s][p][total[s][p]] = sq;
 	total[s][p]++;
 	piece_mat[s] += piece_value[p];
+	//Debug(6);
 }
 
 bool MakeMove(const int from, const int to, const int flags)
@@ -152,7 +145,7 @@ bool MakeMove(const int from, const int to, const int flags)
 		}
 		if (rank[side][to] == 7)
 		{
-			RemovePiece(side, PAWN, from);
+			RemovePiece(side, P, from);
 			AddPiece(side, Q, to);
 			game_list[hply].flags |= PROMOTE;
 		}
@@ -203,7 +196,7 @@ void UnMakeMove()
 		UpdatePiece(side, b[m->to], m->to, m->from);
 	}
 	if (m->capture != EMPTY)
-	{
+	{ 
 		AddPiece(xside, m->capture, m->to);
 	}
 
@@ -234,8 +227,12 @@ int MakeCapture(const int from, const int to, const int flags)
 	game_list[hply].fifty = 0;
 	game_list[hply].hash = currentkey;
 	game_list[hply].lock = currentlock;
+
+	castle &= castle_mask[from] & castle_mask[to];//
+	
 	++ply;
 	++hply;
+	
 	if (b[to] != EMPTY)
 	{
 		RemovePiece(xside, b[to], to);
@@ -278,6 +275,7 @@ void UnMakeCapture()
 	--hply;
 	game* h = &game_list[hply];
 	fifty = h->fifty;
+	castle = h->castle;
 
 	if (h->flags & PROMOTE)
 	{
@@ -294,7 +292,7 @@ void UnMakeCapture()
 	{
 		AddPiece(xside, h->capture, h->to);
 	}
-	if (b[h->from] == P && h->capture == EMPTY && col[h->from] != col[h->to])
+	if(h->flags & EP)
 	{
 		AddPiece(xside, P, pawnplus[xside][h->to]);
 	}
@@ -325,17 +323,84 @@ void UnMakeRecapture()
 	AddPiece(xside, game_list[hply].capture, game_list[hply].to);
 }
 
-void BeforeCastle()
+bool MakeQuietMove(const int from, const int to, const int flags)
 {
-	KingScore[side][squares[side][F1]] = -60;
-	KingScore[side][squares[side][F2]] = -45;
-	KingScore[side][squares[side][G1]] = -20;
-	PieceScore[side][P][squares[side][E2]] = -8;
-	PieceScore[side][B][squares[side][G2]] = 4;
-	PieceScore[side][B][squares[side][F1]] = -12;
-	PieceScore[side][N][squares[side][G1]] = -20;
-	PieceScore[side][P][squares[side][F2]] = 5;
-	PieceScore[side][P][squares[side][F3]] = 3;
+	if (b[from] == K)
+	{
+		if (Attack(xside, to))
+		{
+			return false;
+		}
+		if (abs(from - to) == 2)
+		{
+			UpdatePiece(side, ROOK, castle_start[to], castle_dest[to]);
+			KingScore[side][squares[side][E1]] = -40;
+			if (col[to] == 6)
+			{
+				AfterCastle();
+			}
+		}
+	}
+
+	game_list[hply].flags = flags;
+	game_list[hply].from = from;
+	game_list[hply].to = to;
+	game_list[hply].capture = b[to];
+	game_list[hply].castle = castle;
+	game_list[hply].fifty = fifty;
+	game_list[hply].hash = currentkey;
+	game_list[hply].lock = currentlock;
+
+	castle &= castle_mask[from] & castle_mask[to];
+
+	fifty++;
+
+	if (b[from] == P)
+	{
+		fifty = 0;
+		UpdatePawn(side, from, to);
+	}
+	else
+	{
+		UpdatePiece(side, b[from], from, to);
+	}
+	ply++;
+	hply++;
+	side ^= 1;
+	xside ^= 1;
+
+	if (Attack(side, pieces[xside][K][0]))
+	{
+		UnMakeMove();
+		return false;
+	}
+	return true;
+}
+
+void UnMakeQuietMove()
+{
+	side ^= 1;
+	xside ^= 1;
+	--ply;
+	--hply;
+	game* m = &game_list[hply];
+	castle = m->castle;
+	fifty = m->fifty;
+
+	UpdatePiece(side, b[m->to], m->to, m->from);
+
+	if (b[m->from] == K && abs(m->from - m->to) == 2)
+	{
+		int from, to;
+		to = castle_start[m->to];
+		from = castle_dest[m->to];
+		UpdatePiece(side, ROOK, from, to);
+		KingScore[side][squares[side][E1]] = 10;
+		if (col[to] == 7)
+		{
+			BeforeCastle();
+		}
+	}
 }
 
 void AfterCastle()
@@ -349,4 +414,17 @@ void AfterCastle()
 	PieceScore[side][N][squares[side][G1]] = -16;
 	PieceScore[side][P][squares[side][F2]] = 4;
 	PieceScore[side][P][squares[side][F3]] = 4;
+}
+
+void BeforeCastle()
+{
+	KingScore[side][squares[side][F1]] = -60;
+	KingScore[side][squares[side][F2]] = -45;
+	KingScore[side][squares[side][G1]] = -20;
+	PieceScore[side][P][squares[side][E2]] = -8;
+	PieceScore[side][B][squares[side][G2]] = 4;
+	PieceScore[side][B][squares[side][F1]] = -12;
+	PieceScore[side][N][squares[side][G1]] = -20;
+	PieceScore[side][P][squares[side][F2]] = 5;
+	PieceScore[side][P][squares[side][F3]] = 3;
 }
