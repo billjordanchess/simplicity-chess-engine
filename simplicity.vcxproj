@@ -21,14 +21,12 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -68,6 +66,8 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -78,7 +78,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
-    <None Include="spare.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="globals.h" />
@@ -88,7 +87,6 @@
   <ItemGroup>
     <ClCompile Include="attack.cpp" />
     <ClCompile Include="bitboard.cpp" />
-    <ClCompile Include="blunders.cpp" />
     <ClCompile Include="book.cpp" />
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="endgame.cpp" />
@@ -98,9 +96,10 @@
     <ClCompile Include="hash.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="moves.cpp" />
+    <ClCompile Include="qsearch.cpp" />
     <ClCompile Include="see.cpp" />
     <ClCompile Include="search.cpp" />
-    <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="update.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
