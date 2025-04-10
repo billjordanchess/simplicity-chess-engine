@@ -53,10 +53,6 @@ char piece_char[7] = {
 	'P', 'N', 'B', 'R', 'Q', 'K', 'X'
 };
 
-int kmoves[64][8];
-int knightmoves[64][8];
-int kingmoves[64][8];
-
 //bitboard.cpp
 int pawnleft[2][64];
 int pawnright[2][64];
@@ -77,15 +73,9 @@ int PlyType[MAX_PLY];
 
 //board.cpp
 int done[1000];
-int drawn;
 
-int pawns[2];
 int pieces[2][6][10];
 int total[2][6];
-
-int Num[2];
-
-int InCheck[MAX_PLY];
 
 //moves.cpp
 int table_score[2];
@@ -99,6 +89,10 @@ int KingSide2[2][64];
 int QueenSide2[2][64];
 int PawnBlocked[2][64];
 
+void SetKnightMoves();
+void SetKingMoves();
+void SetLineMoves();
+
 //eval.cpp
 int KingPawn[2][64];
 int pawn_eval[2][MAX_PLY];
@@ -106,9 +100,6 @@ int king_pawn[2][2][512];
 int captures[MAX_PLY];
 int Threat[MAX_PLY];
 int KingEval[2][MAX_PLY];
-
-int start_piece_mat[2];
-int start_pawn_mat[2];
 
 int passed[2][64];
 int adjacent_passed[2][64];
@@ -265,17 +256,6 @@ int king_total[64] = {
    3, 5,  5,  5, 5,  5, 5, 3
 };
 
-int queen_total[64] = {
-  3, 3,  5,  5, 5,  5, 3, 3,
-  3, 3,  5,  5, 5,  5, 3, 3,
-  5, 5,  8,  8, 8,  8, 5, 5,
-  5, 5,  8,  8, 8,  8, 5, 5,
-  5, 5,  8,  8, 8,  8, 5, 5,
-  5, 5,  8,  8, 8,  8, 5, 5,
-  3, 3,  5,  5, 5,  5, 3, 3,
-  3, 3,  5,  5, 5,  5, 3, 3
-};
-
 int pawn_blocked[64] = {
 	0, 0,  0,  0, 0,  0, 0, 0,
 	0, 0,  0,  0, 0,  0, 0, 0,
@@ -334,8 +314,24 @@ void SetPawnless();
 int GetBest(int ply);
 int GetBest2(int ply);
 
+void SetCastle();
+
 void SetBoard();
 void ClearKillers();
+
+void SetUp()
+{
+	SetKnightMoves();
+	SetKingMoves();
+	SetLineMoves();
+	SetLinks();
+	SetBits();
+	SetScores();
+	SetKingPawnTable();
+	SetCastle();
+	SetPassed();
+	SetPawnless();
+}
 
 void StartGame()
 {
@@ -349,34 +345,6 @@ void StartGame()
 	NewPosition();
 	SetBoard();
 	ClearKillers();
-}
-
-void SetUp()
-{
-	side = 0;
-	xside = 1;
-	castle = 15;
-	fifty = 0;
-	ply = 0;
-	hply = 0;
-	first_move[0] = 0;
-	castle_start[G1] = H1;
-	castle_dest[G1] = F1;
-	castle_start[C1] = A1;
-	castle_dest[C1] = D1;
-	castle_start[G8] = H8;
-	castle_dest[G8] = F8;
-	castle_start[C8] = A8;
-	castle_dest[C8] = D8;
-	SetBits();
-	SetScores();
-	SetKingPawnTable();
-	SetPassed();
-	SetPawnless();
-	SetNullDepth();
-	SetBoard();
-	for (int x = 0; x < 100; x++)
-		centi_pieces[x] = x * 100;
 }
 
 void NewPosition()
@@ -397,6 +365,9 @@ void NewPosition()
 	bit_pieces[0][K] = bit_pieces[1][K] = 0;
 	bit_units[0] = bit_units[1] = 0;
 	bit_all = 0;
+	
+	first_move[0] = 0;
+
 	currentkey = GetKey();
 	currentlock = GetLock();
 	currentpawnkey = GetPawnKey();
@@ -441,32 +412,41 @@ void SetBoard()
 	{
 		b[i] = EMPTY;
 	}
-	currentkey = GetKey();
-	currentlock = GetLock();
-	currentpawnkey = GetPawnKey();
-	currentpawnlock = GetPawnLock();
+}
+
+void SetCastle()
+{
+	castle_start[G1] = H1;
+	castle_dest[G1] = F1;
+	castle_start[C1] = A1;
+	castle_dest[C1] = D1;
+	castle_start[G8] = H8;
+	castle_dest[G8] = F8;
+	castle_start[C8] = A8;
+	castle_dest[C8] = D8;
+	castle = 15;
 }
 
 void SetPassed()
 {
-	int v, w;
+	int white_score, black_score;
 	for (int x = 0; x < 64; x++)
 	{
 		switch (row[x])
 		{
-		case 0:v = 0; w = 800; break;
-		case 1:v = 10; w = 100; break;
-		case 2:v = 15; w = 60; break;
-		case 3:v = 24; w = 40; break;
-		case 4:v = 40; w = 24; break;
-		case 5:v = 60; w = 15; break;
-		case 6:v = 100; w = 10; break;
-		case 7:v = 800; w = 0; break;
+		case 0: white_score = 0; black_score = 800; break;
+		case 1: white_score = 10; black_score = 100; break;
+		case 2: white_score = 15; black_score = 60; break;
+		case 3: white_score = 24; black_score = 40; break;
+		case 4: white_score = 40; black_score = 24; break;
+		case 5: white_score = 60; black_score = 15; break;
+		case 6: white_score = 100; black_score = 10; break;
+		case 7: white_score = 800; black_score = 0; break;
 		default:
-			v = 0; w = 0;
+			white_score = 0; black_score = 0;
 		}
-		passed[0][x] = v - PieceScore[0][0][x];
-		passed[1][x] = w - PieceScore[1][0][x];
+		passed[0][x] = white_score - PieceScore[0][0][x];
+		passed[1][x] = black_score - PieceScore[1][0][x];
 	}
 }
 
@@ -527,6 +507,8 @@ void SetScores()
 		PawnBlocked[0][x] = pawn_blocked[x];
 		PawnBlocked[1][x] = pawn_blocked[Flip[x]];
 	}
+	for (int x = 0; x < 100; x++)
+		centi_pieces[x] = x * 100;
 }
 
 void SetKingPawnTable()
