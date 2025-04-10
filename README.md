@@ -38,3 +38,10 @@ debug functions
 ability to load positions
 
 Note that it is a work in progress and there is more to be done.
+
+<b>Version 1.5 10/4/25</b>
+
+There has been much tidying up of the code to make it more readable.
+
+Captures and non-captures now generated separately.
+
