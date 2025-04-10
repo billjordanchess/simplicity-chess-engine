@@ -8,6 +8,7 @@ const int MAX2 = MAX_PLY - 2;
 
 extern int deep;
 extern int root_score;
+extern int currentdepth;
 
 void CheckUp();
 
@@ -28,7 +29,7 @@ void UnMakeRecapture();
 
 int CaptureSearch(int alpha, const int beta, const int depth);
 int RecaptureSearch(int alpha, const int beta, const int depth, const int sq);
-int GenRecaptures(const int diff, const int dest);
+int GenRecaptures(const int diff, const int to);
 
 int BlockedPawns(const int s);
 
@@ -39,16 +40,21 @@ int QuietSearch(int alpha, int beta, int depth)
 	if (nodes % 4096 == 0)
 		CheckUp();
 	if (ply > MAX2)
-		return eval(alpha, beta);
+		return Eval(alpha, beta);
 
-	int score;
+	int from, to, flags, score;
 	int check = Check(xside, pieces[side][K][0]);
+
+	currentdepth = depth;
 
 	//start evasion
 	if (check > -1)
 	{
 		first_move[ply + 1] = first_move[ply];
 		Evasion(check);
+		//EvadeCapture(check);
+		
+		//EvadeQuiet(check);
 
 		if (first_move[ply] == first_move[ply + 1])
 		{
@@ -56,7 +62,7 @@ int QuietSearch(int alpha, int beta, int depth)
 		}
 		if (!(game_list[hply - 1].flags & (PROMOTE | CAPTURE)))
 		{
-			score = eval(alpha, beta);
+			score = Eval(alpha, beta);
 			if (score < alpha)
 			{
 				return alpha;
@@ -69,11 +75,14 @@ int QuietSearch(int alpha, int beta, int depth)
 		for (int i = first_move[ply]; i < first_move[ply + 1]; i++)
 		{
 			top = Sort(i, top, first_move[ply + 1]);
+			from = move_list[i].from;
+			to = move_list[i].to;
 
-			if (!MakeCapture(move_list[i].from, move_list[i].to, move_list[i].flags))
+			if (!MakeCapture(from, to, move_list[i].flags))
 			{
 				continue;
 			}
+
 			count++;
 			score = -QuietSearch(-beta, -alpha, depth - 1);
 			UnMakeCapture();
@@ -84,17 +93,16 @@ int QuietSearch(int alpha, int beta, int depth)
 				{
 					return beta;
 				}
-				if (score > 9000)
-				{
-					AddHash(side, depth, score, BETA, move_list[i].from, move_list[i].to);
-					return score;
-				}
 				alpha = score;
 			}
+			//*
 			if (score > root_score && currentmax > 6 && PlyMove[1] > 1)
 			{
+					//Alg(move_list[i].from, move_list[i].to);
+				//z();
 				break;
 			}
+			//*/
 		}
 		if (count == 0)
 		{
@@ -110,22 +118,16 @@ int QuietSearch(int alpha, int beta, int depth)
 			return 0;
 	}
 
-	drawn = 0;
 	int lookup = LookUp2(side);
 	if (lookup == -1)
-		score = eval(alpha, beta);
+		score = Eval(alpha, beta);
 	else
 	{
 		score = hash_move.score;
 	}
-
 	if (score >= beta)
 	{
 		return beta;
-	}
-	if (drawn == 1)
-	{
-		return 0;
 	}
 	if (score > alpha)
 	{
@@ -135,7 +137,7 @@ int QuietSearch(int alpha, int beta, int depth)
 	if (depth > -2)
 		GenCapsChecks((alpha - score) / 100, depth);
 	else
-		GenCaps((alpha - score) / 100);
+		GenQuietCaptures((alpha - score) / 100);
 
 	if (first_move[ply] == first_move[ply + 1])
 	{
@@ -148,7 +150,11 @@ int QuietSearch(int alpha, int beta, int depth)
 
 	if (first_move[ply] + 1 == first_move[ply + 1])
 	{
-		if (MakeCapture(move_list[first_move[ply]].from, move_list[first_move[ply]].to, move_list[first_move[ply]].flags))
+		from = move_list[first_move[ply]].from;
+		to = move_list[first_move[ply]].to;
+		flags = move_list[first_move[ply]].flags;
+
+		if (MakeCapture(from, to, flags))
 		{
 			score = -QuietSearch(-beta, -alpha, depth);
 			extend[ply] = 1;
@@ -158,10 +164,10 @@ int QuietSearch(int alpha, int beta, int depth)
 			{
 				if (score >= beta)
 				{
-					AddHash(side, depth, score, BETA, move_list[first_move[ply]].from, move_list[first_move[ply]].to);//3/5/17
+					AddHash(side, depth, score, BETA, from, to, flags);//3/5/17
 					return beta;
 				}
-				AddHash(side, depth, score, 0, move_list[first_move[ply]].from, move_list[first_move[ply]].to);//6/5/17
+				AddHash(side, depth, score, 0, from, to, flags);//6/5/17
 				return score;
 			}
 		}
@@ -172,12 +178,16 @@ int QuietSearch(int alpha, int beta, int depth)
 	for (int i = first_move[ply]; i < first_move[ply + 1]; i++)
 	{
 		top = Sort(i, top, first_move[ply + 1]);
+		from = move_list[i].from;
+		to = move_list[i].to;
+		flags = move_list[i].flags;
 
-		if (!MakeCapture(move_list[i].from, move_list[i].to, move_list[i].flags))
+		if (!MakeCapture(from, to, flags))
 		{
 			continue;
 		}
-		if (piece_value[b[move_list[i].to]] < piece_value[game_list[hply - 1].capture] &&
+	
+		if (piece_value[b[to]] < piece_value[game_list[hply - 1].capture] &&
 			game_list[hply - 1].capture != EMPTY)
 		{
 			score = -QuietSearch(-beta, -alpha, depth);
@@ -193,26 +203,31 @@ int QuietSearch(int alpha, int beta, int depth)
 			{
 				if (move_list[i].flags & CHECK)
 				{
-					if (check_history[b[move_list[i].from]][move_list[i].to] < HISTORY_LIMIT)
-						check_history[b[move_list[i].from]][move_list[i].to] ++;
+					if (check_history[b[from]][to] < HISTORY_LIMIT)
+						check_history[b[from]][to] ++;
 					else
-						check_history[b[move_list[i].from]][move_list[i].to] /= 2;
-					if (score > 9900 && check_history[b[move_list[i].from]][move_list[i].to] < CHECK_SCORE)
-						check_history[b[move_list[i].from]][move_list[i].to] = CHECK_SCORE;
+						check_history[b[from]][to] /= 2;
+					if (score > 9900 && check_history[b[from]][to] < CHECK_SCORE)
+						check_history[b[from]][to] = CHECK_SCORE;
 				}
 				return beta;
 			}
 			if (score > 9000)
 			{
-				AddHash(side, depth, score, BETA, move_list[i].from, move_list[i].to);
+				AddHash(side, depth, score, BETA, from, to, flags);
 				return score;
 			}
 			alpha = score;
 		}
+		//*
 		if (score > root_score && currentmax > 6 && PlyMove[1] > 1)
 		{
-			break;
+						//Alg(move_list[i].from, move_list[i].to);
+				//z();
+			//break;//??
+			return score;
 		}
+		//*/
 	}
 	return alpha;
 }
@@ -220,18 +235,18 @@ int QuietSearch(int alpha, int beta, int depth)
 int CaptureSearch(int alpha, const int beta, const int depth)
 {
 	int score;
-	int from, to;
+	int from, to, lowest;
 	nodes++;
-
+	
 	for (int i = first_move[ply]; i < first_move[ply + 1]; i++)
 	{
 		SortCaptures(i, first_move[ply + 1]);
+		from = move_list[i].from;
+		to = move_list[i].to;
 
-		int	lowest = GetLowestAttacker(xside, move_list[i].to);
+		lowest = GetLowestAttacker(xside, move_list[i].to);
 		if(lowest>-1)
 		{
-			from = move_list[i].from;
-			to = move_list[i].to;
 			if(p_value[b[from]] < p_value[b[to]])
 			{
 				move_list[i].score = p_value[b[to]] - p_value[b[from]];
@@ -242,7 +257,7 @@ int CaptureSearch(int alpha, const int beta, const int depth)
 			}
 			else
 			{
-				move_list[i].score = SEESearch(side,from, to);
+				move_list[i].score = SEE(side,from, to);
 			}
 			if(move_list[i].score <= 0)
 			{
@@ -250,7 +265,7 @@ int CaptureSearch(int alpha, const int beta, const int depth)
 			}
 		}
 
-		if (!MakeCapture(move_list[i].from, move_list[i].to, move_list[i].flags))
+		if (!MakeCapture(from, to, move_list[i].flags))
 			continue;
 
 		if (ply > deep)
@@ -275,15 +290,16 @@ int CaptureSearch(int alpha, const int beta, const int depth)
 
 int RecaptureSearch(int alpha, const int beta, const int depth, const int sq)
 {
+	if (piece_value[game_list[hply-2].capture] + piece_value[b[sq]] < piece_value[game_list[hply-1].capture] && 
+				!(game_list[hply-2].flags & INCHECK))
+	{
+		//printf("+");
+	//printf("\n rs");
+	//z();
+	}
 	nodes++;
 
-	if (ply >= MAX1)
-	{
-		return eval(alpha, beta);
-	}
-
-	drawn = 0;
-	int score = eval(alpha, beta);
+	int score = Eval(alpha, beta);
 
 	if (score >= beta)
 	{
@@ -293,15 +309,10 @@ int RecaptureSearch(int alpha, const int beta, const int depth, const int sq)
 	{
 		alpha = score;
 	}
-	if (drawn == 1)//18/1/23
-	{
-		//z();
-		return alpha;
-	}
+	
+	int recapture_type = GenRecaptures((alpha - score) / 100, sq);
 
-	int g = GenRecaptures((alpha - score) / 100, sq);
-
-	if (g == NO_MOVES)
+	if (recapture_type == NO_MOVES)
 	{
 		if (piece_mat[side] == 0 && BlockedPawns(xside) == 1)
 		{
@@ -313,7 +324,7 @@ int RecaptureSearch(int alpha, const int beta, const int depth, const int sq)
 		return alpha;
 	}
 
-	if (g == RECAPTURE_STOP)
+	if (recapture_type == RECAPTURE_STOP)
 	{
 		return alpha + 1;
 	}
