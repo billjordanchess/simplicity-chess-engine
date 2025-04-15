@@ -120,8 +120,8 @@ int pawn_score[64] = {
 	  0,   2,   4,   8,   8,   4,   2,   0,
 	  0,   2,   4,   8,   8,   4,   2,   0,
 	  4,   8,  10,  16,  16,  10,   8,   4,
-	  100, 100,  100, 100, 100,100,100,100,
-	  0,   0,   0,   0,   0,   0,   0,   0
+	  100, 100, 100, 100, 100,100,100,100,
+	  800, 800, 800, 800, 800, 800, 800, 800
 };
 
 int knight_score[64] = {
@@ -311,13 +311,14 @@ int KingEndgame[2][64];
 
 void SetBits();
 void SetPawnless();
-int GetBest(int ply);
-int GetBest2(int ply);
 
 void SetCastle();
+void BeforeCastle();
 
 void SetBoard();
 void ClearKillers();
+
+void FreeAllHash();
 
 void SetUp()
 {
@@ -345,6 +346,8 @@ void StartGame()
 	NewPosition();
 	SetBoard();
 	ClearKillers();
+	FreeAllHash();
+	BeforeCastle();
 }
 
 void NewPosition()

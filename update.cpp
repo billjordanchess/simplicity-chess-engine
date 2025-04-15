@@ -38,7 +38,6 @@ void UpdatePawn(const int s, const int from, const int to)
 
 void UpdatePiece(const int s, const int p, const int from, const int to)
 {
-	//Debug(1);
 	bit_units[s] &= not_mask[from];
 	bit_units[s] |= mask[to];
 	bit_all = bit_units[0] | bit_units[1];
@@ -58,12 +57,10 @@ void UpdatePiece(const int s, const int p, const int from, const int to)
 
 	index[to] = index[from];
 	pieces[s][p][index[to]] = to;
-	//Debug(2);
 }
 
 void RemovePiece(const int s, const int p, const int sq)
 {
-	//Debug(3);
 	AddKey(s, p, sq);
 	b[sq] = EMPTY;
 	bit_units[s] &= not_mask[sq];
@@ -93,12 +90,10 @@ void RemovePiece(const int s, const int p, const int sq)
 		}
 	}
 	piece_mat[s] -= piece_value[p];
-	//Debug(4);
 }
 
 void AddPiece(const int s, const int p, const int sq)
 {
-	//Debug(5);
 	b[sq] = p;
 	AddKey(s, p, sq);
 	bit_units[s] |= mask[sq];
@@ -116,7 +111,6 @@ void AddPiece(const int s, const int p, const int sq)
 	pieces[s][p][total[s][p]] = sq;
 	total[s][p]++;
 	piece_mat[s] += piece_value[p];
-	//Debug(6);
 }
 
 bool MakeMove(const int from, const int to, const int flags)
@@ -221,7 +215,7 @@ void UnMakeMove()
 		AddPiece(xside, m->capture, m->to);
 	}
 
-	if (b[m->from] == K && abs(m->from - m->to) == 2)
+	if(m->flags & CASTLE)
 	{
 		int from, to;
 		to = castle_start[m->to];
@@ -411,8 +405,7 @@ void UnMakeQuietMove()
 
 	UpdatePiece(side, b[m->to], m->to, m->from);
 
-	//if(m->flags & CASTLE)
-	if (b[m->from] == K && abs(m->from - m->to) == 2)
+	if(m->flags & CASTLE)
 	{
 		int from, to;
 		to = castle_start[m->to];
@@ -451,3 +444,103 @@ void BeforeCastle()
 	PieceScore[side][P][squares[side][F2]] = 5;
 	PieceScore[side][P][squares[side][F3]] = 3;
 }
+
+/*
+	bool MakeMove(const int from, const int to, const int flags)
+{
+// 1. King Move Handling
+if (b[from] == K)
+{
+// Check if the move would put the king in check
+if (Attack(xside, to))
+return false;
+
+// Handle castling move (two squares)
+if (abs(from - to) == 2)
+{
+// Update rook position during castling
+UpdatePiece(side, ROOK, castle_start[to], castle_dest[to]);
+// Penalize the old king position after castling
+KingScore[side][squares[side][E1]] = -40;
+// Perform any actions after castling
+if (col[to] == 6)
+{
+AfterCastle();
+}
+}
+}
+
+// 2. Record the move in the game history
+game_list[hply].flags = flags;
+game_list[hply].from = from;
+game_list[hply].to = to;
+game_list[hply].capture = b[to];
+game_list[hply].castle = castle;
+game_list[hply].fifty = fifty;
+game_list[hply].hash = currentkey;
+game_list[hply].lock = currentlock;
+
+// 3. Update castling rights
+castle &= castle_mask[from] & castle_mask[to];
+
+// Increment the fifty-move rule counter
+fifty++;
+
+// 4. Handle Pawn Move Logic
+if (b[from] == P)
+{
+fifty = 0;  // Reset the fifty-move counter when a pawn is moved
+// En passant capture
+if (b[to] == EMPTY && col[from] != col[to])
+{
+RemovePiece(xside, P, pawnplus[xside][to]);
+}
+// Regular capture
+if (b[to] != EMPTY)
+{
+RemovePiece(xside, b[to], to);
+}
+// Handle pawn promotion
+if (rank[side][to] == 7)
+{
+RemovePiece(side, P, from);
+AddPiece(side, Q, to);  // Promote pawn to queen
+game_list[hply].flags |= PROMOTE;  // Mark the promotion
+}
+else
+{
+UpdatePawn(side, from, to);  // Normal pawn move
+}
+}
+// 5. Handle Non-Pawn Move Logic
+else
+{
+// Capture opponent's piece
+if (b[to] != EMPTY)
+{
+fifty = 0;  // Reset the fifty-move counter on capture
+RemovePiece(xside, b[to], to);
+}
+// Update the piece's position on the board
+UpdatePiece(side, b[from], from, to);
+}
+
+// 6. Increment move counters
+ply++;
+hply++;
+
+// 7. Switch sides
+side ^= 1;
+xside ^= 1;
+
+// 8. Check if the king is in check after the move
+if (Attack(side, pieces[xside][K][0]))
+{
+UnMakeMove();  // Undo move if it results in check
+return false;
+}
+
+// 9. If everything is fine, return true indicating a valid move
+return true;
+}
+*/

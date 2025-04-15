@@ -5,6 +5,7 @@ void HashTest();
 move_data hash_move;
 
 void Free();
+void FreeAllHash();
 void Alg(int a, int b);
 void SetBit(BITBOARD& bb, int square);
 
@@ -36,7 +37,7 @@ const BITBOARD MAXHASH = 2 << HASH_SIZE;
 struct hashp
 {
 	BITBOARD hashlock;
-	int score;
+	short score;
 	char depth;
 	char type;
 	char from;
@@ -81,6 +82,12 @@ void RandomizeHash()
 		pawnlock[1][x] = Random(PAWNHASH_SIZE);
 		ep_hash[x] = Random(HASH_SIZE);
 	}
+}
+
+void FreeAllHash()
+{
+memset(hashpos[0], 0, MAXHASH * sizeof(hashp));
+memset(hashpos[1], 0, MAXHASH * sizeof(hashp));
 }
 
 BITBOARD Random(int size)

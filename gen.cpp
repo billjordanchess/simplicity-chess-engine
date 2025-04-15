@@ -31,14 +31,6 @@ void RookMoves(const int);
 void QueenMoves(const int);
 
 void GenEP();
-/*
-void AddCapture(const int from, const int to);
-void AddCapture(const int from, const int to);
-void AddCapture(const int from, const int to);
-void AddCapture(const int from, const int to);
-void AddCapture(const int from, const int to);
-void AddCapture(const int from, const int to);
-*/
 
 void AddRecapture(const int from, const int to);
 
@@ -48,12 +40,10 @@ void AddBishop(const int from, const int to);
 void AddRook(const int from, const int to);
 void AddQueen(const int from, const int to);
 void AddKing(const int from, const int to);
+
 void AddCastle(const int from, const int to);
-
 void AddCheck(const int from, const int to, const int p);
-
 void AddEP(const int from, const int to);
-
 void AddCapture(const int from, const int to, const int score);
 
 move_data* g;
@@ -339,6 +329,29 @@ void GenQuietCaptures(const int diff)
 	z();
 	}
 	/*/
+	int i;
+	int sq;
+	BITBOARD b1, b2;
+
+	b1 = bit_pieces[side][P] & mask_ranks[side][6];
+	while (b1)
+	{
+		i = NextBit(b1);
+		b1 &= not_mask[i];
+		sq = pawnplus[side][i];
+		if (bit_left[side][i] & bit_units[xside])
+		{
+			GenPromote(i, pawnleft[side][i]);
+		}
+		if (bit_right[side][i] & bit_units[xside])
+		{
+			GenPromote(i, pawnright[side][i]);
+		}
+		if (b[sq] == EMPTY)
+		{
+			GenPromote(i, sq);
+		}
+	}
 
 	if (diff < QVAL)
 	{
@@ -356,24 +369,21 @@ void GenQuietCaptures(const int diff)
 			}
 		}
 	}
-	if (bit_targets == 0)
+	if (bit_targets == 0 && move_count == first_move[ply])
 	{
 		first_move[ply + 1] = move_count;
 		return;
 	}
-	int i;
-	int sq;
-	BITBOARD b1, b2;
 
 	if (side == 0)
 	{
-		b1 = bit_pieces[0][P] & ((bit_targets & not_h_file) >> 7);
-		b2 = bit_pieces[0][P] & ((bit_targets & not_a_file) >> 9);
+		b1 = bit_pieces[0][P] & ((bit_targets & not_h_file) >> 7) & not_rank6;
+		b2 = bit_pieces[0][P] & ((bit_targets & not_a_file) >> 9) & not_rank6;
 	}
 	else
 	{
-		b1 = bit_pieces[1][P] & ((bit_targets & not_h_file) << 9);
-		b2 = bit_pieces[1][P] & ((bit_targets & not_a_file) << 7);
+		b1 = bit_pieces[1][P] & ((bit_targets & not_h_file) << 9) & not_rank1;
+		b2 = bit_pieces[1][P] & ((bit_targets & not_a_file) << 7) & not_rank1;
 	}
 
 	while (b1)

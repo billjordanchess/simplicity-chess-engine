@@ -18,6 +18,8 @@ void ShowHelp();
 void SetUp();
 void xboard();
 
+void FreeAllHash();
+
 int board_color[64] =
 {
 	1, 0, 1, 0, 1, 0, 1, 0,
@@ -54,10 +56,12 @@ void SetMaterial();
 void SetBits();
 void Free();
 
+move_data engine_move;
+
 int main()
 {
 	printf("Simplicity Chess Engine 1.5\n");
-	printf("Version new reduce , 10/4/25\n");
+	printf("Version new reduce , 15/4/25\n");
 	printf("Bill Jordan 2025\n");
 	printf("FIDE Master and 2021 state champion.\n");
 	printf("I have published a number of chess books\n");
@@ -86,7 +90,7 @@ int main()
 	SetUp();
 	StartGame();
 	SetMaterial();
-	srand(time(NULL));
+	//??srand(time(NULL));
 
 	GenCheck();
 	computer_side = EMPTY;
@@ -100,7 +104,7 @@ int main()
 		if (side == computer_side)
 		{
 			player[side] = 1;
-			Think(fixed_time);
+			engine_move = Think(fixed_time);
 			turns++;
 
 			currentkey = GetKey();
@@ -125,9 +129,6 @@ int main()
 			printf(" collisions %d ", collisions);
 			printf("\n");
 			collisions = 0;
-
-			//if (ply == 0)
-				;//	ShowAllEval(0);
 
 			printf("Computer's move: %s\n", MoveString(hash_move.from, hash_move.to, 0)); printf("\n");
 			MakeMove(hash_move.from, hash_move.to,0);
@@ -297,7 +298,43 @@ int main()
 	Free();
 	return 0;
 }
+/*
+int ParseMove(const char* s)
+{
+    int from, to, i, promo_piece = 0;
 
+    if (strlen(s) < 4 || s[0] < 'a' || s[0] > 'h' ||
+        s[1] < '1' || s[1] > '8' ||
+        s[2] < 'a' || s[2] > 'h' ||
+        s[3] < '1' || s[3] > '8')
+        return -1;
+
+    from = s[0] - 'a' + (s[1] - '1') * 8;
+    to   = s[2] - 'a' + (s[3] - '1') * 8;
+
+    if (strlen(s) == 5) {
+        switch (s[4]) {
+            case 'q': promo_piece = QUEEN; break;
+            case 'r': promo_piece = ROOK;  break;
+            case 'b': promo_piece = BISHOP; break;
+            case 'n': promo_piece = KNIGHT; break;
+            default: return -1;
+        }
+    }
+
+    for (i = 0; i < first_move[1]; i++) {
+        if (move_list[i].from == from && move_list[i].to == to) {
+            if (promo_piece) {
+                if (move_list[i].promote == promo_piece)
+                    return i;
+            } else if (move_list[i].promote == EMPTY) {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+*/
 int ParseMove(char* s)
 {
 	int from, to, i;
@@ -431,26 +468,23 @@ void xboard()
 		fflush(stdout);
 		if (side == computer_side)
 		{
-			Think(fixed_time);
+			engine_move = Think(fixed_time);
 			SetMaterial();
 			
 			GenCheck();
 			currentkey = GetKey();
 			currentlock = GetLock();
-			lookup = LookUp2(side);
 
-			if (hash_move.from != 0 || hash_move.to != 0)
+			if (engine_move.from != 0 || engine_move.to != 0)
 			{
-				hash_move.from = hash_move.from;
-				hash_move.to = hash_move.to;
+				engine_move.from = engine_move.from;
+				engine_move.to = engine_move.to;
 			}
-			else
-				printf(" lookup=0 ");
-			move_list[0].from = hash_move.from;
-			move_list[0].to = hash_move.to;
-			printf("move %s\n", MoveString(hash_move.from, hash_move.to, 0));
+			move_list[0].from = engine_move.from;
+			move_list[0].to = engine_move.to;
+			printf("move %s\n", MoveString(engine_move.from, engine_move.to, 0));
 
-			MakeMove(hash_move.from, hash_move.to,0);
+			MakeMove(engine_move.from, engine_move.to,0);
 
 			ply = 0;
 			
@@ -542,13 +576,13 @@ void xboard()
 			continue;
 		if (!strcmp(command, "hint"))
 		{
-			Think(fixed_time);
+			engine_move = Think(fixed_time);
 			currentkey = GetKey();
 			currentlock = GetLock();
 			lookup = LookUp2(side);
-			if (hash_move.from == 0 && hash_move.to == 0)
+			if (engine_move.from == 0 && engine_move.to == 0)
 				continue;
-			printf("Hint: %s\n", MoveString(hash_move.from, hash_move.to, 0));
+			printf("Hint: %s\n", MoveString(engine_move.from, engine_move.to, 0));
 			continue;
 		}
 		if (!strcmp(command, "undo"))
@@ -685,6 +719,156 @@ int Reps()
 	return repeats;
 }
 
+/*
+void SaveFEN(char* fen)
+{
+    int empty = 0;
+    int i;
+    char pieceChar[13] = { '.', 'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k' };
+    int row, col;
+    char temp[64];
+
+    fen[0] = '\0';
+
+    // --- Piece placement ---
+    for (row = 7; row >= 0; row--) {
+        empty = 0;
+        for (col = 0; col < 8; col++) {
+            i = row * 8 + col;
+            if (board[i] == EMPTY) {
+                empty++;
+            } else {
+                if (empty > 0) {
+                    sprintf(temp, "%d", empty);
+                    strcat(fen, temp);
+                    empty = 0;
+                }
+                strcat(fen, &pieceChar[board[i]]);
+            }
+        }
+        if (empty > 0) {
+            sprintf(temp, "%d", empty);
+            strcat(fen, temp);
+        }
+        if (row > 0)
+            strcat(fen, "/");
+    }
+
+    // --- Side to move ---
+    strcat(fen, side == 0 ? " w " : " b ");
+
+    // --- Castling rights ---
+    int any_castle = 0;
+    if (can_castle[0]) { strcat(fen, "K"); any_castle = 1; }
+    if (can_castle[1]) { strcat(fen, "Q"); any_castle = 1; }
+    if (can_castle[2]) { strcat(fen, "k"); any_castle = 1; }
+    if (can_castle[3]) { strcat(fen, "q"); any_castle = 1; }
+    if (!any_castle) strcat(fen, "-");
+
+    // --- En passant square ---
+    strcat(fen, " ");
+    if (ep_square == -1) {
+        strcat(fen, "-");
+    } else {
+        temp[0] = 'a' + (ep_square % 8);
+        temp[1] = '1' + (ep_square / 8);
+        temp[2] = '\0';
+        strcat(fen, temp);
+    }
+
+    // --- Halfmove clock ---
+    sprintf(temp, " %d", halfmove_clock);
+    strcat(fen, temp);
+
+    // --- Fullmove number ---
+    sprintf(temp, " %d", fullmove_number);
+    strcat(fen, temp);
+}
+
+void LoadFEN(const char* fen)
+{
+    int i = 0; // board index
+    int j = 0; // fen index
+    char c;
+
+    memset(board, EMPTY, sizeof(board));
+
+    // --- Piece placement ---
+    while (i < 64 && (c = fen[j++]) != ' ')
+    {
+        if (c >= '1' && c <= '8') {
+            i += c - '0';
+        }
+        else if (c == '/') {
+            continue;
+        }
+        else {
+            switch (c)
+            {
+                case 'P': board[i++] = WPAWN; break;
+                case 'N': board[i++] = WKNIGHT; break;
+                case 'B': board[i++] = WBISHOP; break;
+                case 'R': board[i++] = WROOK; break;
+                case 'Q': board[i++] = WQUEEN; break;
+                case 'K': board[i++] = WKING; break;
+                case 'p': board[i++] = BPAWN; break;
+                case 'n': board[i++] = BKNIGHT; break;
+                case 'b': board[i++] = BBISHOP; break;
+                case 'r': board[i++] = BROOK; break;
+                case 'q': board[i++] = BQUEEN; break;
+                case 'k': board[i++] = BKING; break;
+                default: break;
+            }
+        }
+    }
+
+    // --- Side to move ---
+    while (fen[j] == ' ') j++;
+    side = (fen[j] == 'w') ? 0 : 1;
+    xside = 1 - side;
+    j++;
+
+    // --- Castling rights ---
+    while (fen[j] == ' ') j++;
+    can_castle[0] = can_castle[1] = can_castle[2] = can_castle[3] = 0;
+    if (fen[j] == '-') {
+        j++;
+    } else {
+        while (fen[j] != ' ') {
+            switch (fen[j]) {
+                case 'K': can_castle[0] = 1; break; // White king-side
+                case 'Q': can_castle[1] = 1; break; // White queen-side
+                case 'k': can_castle[2] = 1; break; // Black king-side
+                case 'q': can_castle[3] = 1; break; // Black queen-side
+            }
+            j++;
+        }
+    }
+
+    // --- En passant square ---
+    while (fen[j] == ' ') j++;
+    if (fen[j] == '-') {
+        ep_square = -1;
+        j++;
+    } else {
+        int file = fen[j++] - 'a';
+        int rank = fen[j++] - '1';
+        ep_square = file + rank * 8;
+    }
+
+    // --- Halfmove clock (optional) ---
+    while (fen[j] == ' ') j++;
+    halfmove_clock = atoi(&fen[j]);
+    while (fen[j] != ' ' && fen[j] != '\0') j++;
+
+    // --- Fullmove number (optional) ---
+    while (fen[j] == ' ') j++;
+    fullmove_number = atoi(&fen[j]);
+
+    GenCheck(); // Update move list, checks, etc.
+}
+
+*/
 int LoadDiagram(char* file, int num)
 {
 	int x, n = 0;
@@ -706,6 +890,7 @@ int LoadDiagram(char* file, int num)
 		if (!ts) break;
 	}
 	NewPosition();
+	FreeAllHash();
 	for (int i = 0; i < 64; i++)
 	{
 		b[i] = EMPTY;
@@ -899,3 +1084,179 @@ void GenCheck()
 		GenNonCaptures();
 	}
 }
+
+/*
+#include <iostream>
+#include <sstream>
+#include <string>
+
+void SetBoardToStartingPosition();
+void SetBoardFromFEN(const std::string& fen);
+void MakeMove(const std::string& move);
+std::string SearchBestMove(int depth, int movetime);
+void WinBoardLoop(); // Your existing WinBoard code
+
+void HandleUciPosition(const std::string& command) {
+    std::istringstream ss(command);
+    std::string token;
+    ss >> token; // "position"
+    
+    std::string positionType;
+    ss >> positionType; // "startpos" or "fen"
+
+    if (positionType == "startpos") {
+        SetBoardToStartingPosition();
+    } else if (positionType == "fen") {
+        std::string fen;
+        while (ss >> token && token != "moves") {
+            fen += token + " ";
+        }
+        SetBoardFromFEN(fen);
+    }
+
+    // Read moves (if any)
+    while (ss >> token) {
+        MakeMove(token);
+    }
+}
+
+void HandleUciGo(const std::string& command) {
+    int depth = -1;
+    int movetime = -1;
+
+    std::istringstream ss(command);
+    std::string token;
+    ss >> token; // "go"
+
+    while (ss >> token) {
+        if (token == "depth") {
+            ss >> depth;
+        } else if (token == "movetime") {
+            ss >> movetime;
+        }
+    }
+
+    std::string bestMove = SearchBestMove(depth, movetime);
+    std::cout << "bestmove " << bestMove << std::endl;
+}
+
+void UciLoop() {
+    std::string input;
+    while (std::getline(std::cin, input)) {
+        if (input == "uci") {
+            std::cout << "id name MyEngine" << std::endl;
+            std::cout << "id author MyName" << std::endl;
+            std::cout << "uciok" << std::endl;
+        } else if (input == "isready") {
+            std::cout << "readyok" << std::endl;
+        } else if (input.rfind("position", 0) == 0) {
+            HandleUciPosition(input);
+        } else if (input.rfind("go", 0) == 0) {
+            HandleUciGo(input);
+        } else if (input == "stop") {
+            // Handle stopping search if necessary
+        } else if (input == "quit") {
+            break;
+        }
+    }
+}
+
+int main() {
+    std::string firstCommand;
+    std::getline(std::cin, firstCommand);
+
+    if (firstCommand == "uci") {
+        UciLoop();
+    } else {
+        WinBoardLoop(); // Default to WinBoard mode
+    }
+    return 0;
+}
+
+///
+void uci() {
+    std::string line;
+    std::string token;
+    int lookup;
+
+    StartGame();
+    fixed_time = 0;
+
+    while (std::getline(std::cin, line)) {
+        std::istringstream iss(line);
+        iss >> token;
+
+        if (token == "uci") {
+            std::cout << "id name MyEngine" << std::endl;
+            std::cout << "id author YourName" << std::endl;
+            std::cout << "uciok" << std::endl;
+        }
+        else if (token == "isready") {
+            std::cout << "readyok" << std::endl;
+        }
+        else if (token == "ucinewgame") {
+            StartGame();
+        }
+        else if (token == "position") {
+            std::string sub;
+            iss >> sub;
+
+            if (sub == "startpos") {
+                StartGame();
+                while (iss >> sub) {
+                    if (sub == "moves") break;
+                }
+            } else if (sub == "fen") {
+                std::string fen = "";
+                int fen_parts = 6;
+                while (fen_parts-- && iss >> sub) {
+                    fen += sub + " ";
+                }
+                LoadFEN(fen.c_str());  // Implement this function based on LoadDiagram
+            }
+
+            while (iss >> sub) {
+                int m = ParseMove(sub.c_str());
+                if (m != -1) {
+                    MakeMove(move_list[m].from, move_list[m].to, 0);
+                    ply = 0;
+                    GenCheck();
+                }
+            }
+        }
+        else if (token == "go") {
+            Think(fixed_time);
+            SetMaterial();
+            GenCheck();
+            currentkey = GetKey();
+            currentlock = GetLock();
+            lookup = LookUp2(side);
+
+            if (hash_move.from != 0 || hash_move.to != 0) {
+                move_list[0].from = hash_move.from;
+                move_list[0].to = hash_move.to;
+                std::cout << "bestmove " << MoveString(hash_move.from, hash_move.to, 0) << std::endl;
+                MakeMove(hash_move.from, hash_move.to, 0);
+                ply = 0;
+                GenCheck();
+                DisplayResult();
+            } else {
+                std::cout << "bestmove 0000" << std::endl; // null move
+            }
+        }
+        else if (token == "stop") {
+            // Implement if search is running in another thread
+        }
+        else if (token == "quit") {
+            break;
+        }
+        else if (token == "setoption") {
+            // Optional: parse name/value and apply to engine settings
+        }
+        else {
+            // UCI is strict — ignore unknown commands silently or log them
+        }
+    }
+}
+
+*/

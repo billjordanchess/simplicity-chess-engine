@@ -256,7 +256,7 @@ void UnMakeMove();
 void GenCaptures();
 
 /* Search.cpp */
-void Think(int);
+move_data Think(int);
 int Search(int alpha, int beta, int depth, int pvflag, int nullflag);
 int QuietSearch(int alpha, int beta, int depth);
 int Reps();
@@ -415,8 +415,6 @@ extern int b[64];
 
 extern int ply;
 extern int currentmax;
-
-extern int drawn;
 
 extern int KingPawn[2][64];
 extern int pawn_score[64];

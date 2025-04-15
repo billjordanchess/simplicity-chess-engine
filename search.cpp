@@ -18,6 +18,8 @@ int GetThreat(int first, int target);
 #define WEAKER_ATTACK 2
 #define SEE_ATTACK 3
 
+#define INF 10000
+
 const int INVALID = 11111;
 
 int startmat[2];
@@ -56,7 +58,7 @@ jmp_buf env;
 bool stop_search;
 int root_score;
 
-move_data root;
+move_data root_move;
 
 bool IsLegal(const int, const int);
 
@@ -91,6 +93,8 @@ int all, cut;
 
 void z();
 
+void GenCheck();
+
 int InCheck[MAX_PLY];
 
 int null_depth[64] = {
@@ -104,10 +108,11 @@ int null_depth[64] = {
 23, 23, 23, 24, 23, 23, 23, 23
 };
 
-void Think(int fixed_time)
+move_data Think(int fixed_time)
 {
 	int bookflag = 0;
 	int alpha, beta;
+//*	
 	if (hply < 8)
 	{
 		if (hply == 0)
@@ -115,10 +120,10 @@ void Think(int fixed_time)
 		bookflag = Book();
 		if (bookflag > 0)
 		{
-			return;
+			return hash_move;
 		}
 	}
-
+//*/
 	int score = 0;
 	stop_search = false;
 
@@ -136,9 +141,7 @@ void Think(int fixed_time)
 			else
 				UnMakeMove();
 		}
-		hash_move.from = root.from;
-		hash_move.to = root.to;
-		return;
+		return root_move;
 	}
 
 	if (fixed_time == 0)
@@ -191,11 +194,8 @@ void Think(int fixed_time)
 	memset(stats_count, 0, sizeof(stats_count));
 	memset(stats_killers, 0, sizeof(stats_killers));
 
-	if (hply > 12)
-	{
-		SetKillers();
-		SetKillers();
-	}
+	ClearKillers();
+
 	memset(history, 0, sizeof(history));
 	memset(check_history, 0, sizeof(check_history));
 	memset(counter, 0, sizeof(counter));
@@ -205,6 +205,92 @@ void Think(int fixed_time)
 
 	all = 0; cut = 0;
 
+/*
+	move_data best_move;
+int prev_score = 0;
+
+GenCheck();//
+int from, to, flags;
+int best_score;
+
+	move_data engine_move = { 0, 0 };  // default "no move"
+for (int i = 1; i <= max_depth; i++)
+{
+    best_score = -INF;
+
+	currentkey = GetKey();
+	currentlock = GetLock();
+	currentpawnkey = GetPawnKey();
+	currentpawnlock = GetPawnLock();
+	memset(extend, 0, sizeof(extend));
+	currentmax = i;
+	deep = 0;
+	prev_score = Search(-INF, INF, i, PV, 0);
+
+ for (int x = first_move[0]; x < first_move[1]; x++)
+	{
+		from = move_list[x].from;
+		to = move_list[x].to;
+		flags = move_list[x].flags;
+		if (!MakeMove(from, to, flags))
+		{
+			continue;
+		}
+
+        alpha = prev_score - 1;
+        beta = prev_score + 1;
+
+			while (true)
+			{
+				alpha = score - 1,
+				beta = score + 1;
+				score = -Search(-beta, -alpha, i - 1, PV, 0);
+				if (score > alpha && score < beta)
+					break;
+				if (score <= alpha)
+					alpha = score - 50;
+				if (beta >= score)
+					beta = score + 50;
+				score = -Search(-beta, -alpha, i - 1, PV, 0);
+				if (score > alpha && score < beta)
+					break;
+				score = -Search(-INF, INF, i - 1, PV, 0);
+				break;
+			}
+
+        UnMakeMove();
+
+        if (score > best_score) 
+		{
+            best_score = score;
+            root_move = move_list[x];
+        }
+    }
+
+    prev_score = best_score;  // Update for next depth
+    root_score = best_score;
+
+	printf("%d %d %d %d", i * 100 + deep, root_score, (GetTime() - start_time) / 10, nodes);
+
+	if (LookUp2(side) > -1)
+	{
+		DisplayPV();
+		printf("\n");
+		fflush(stdout);
+	}
+
+	if (score > 9000 || score < -9000)
+	{
+		break;
+	}
+
+    if (best_score > 9000 || best_score < -9000)
+        break;
+}
+
+return root_move;
+}
+*/
 	for (int i = 1; i <= max_depth; i++)
 	{
 		if (i > 1)
@@ -216,20 +302,16 @@ void Think(int fixed_time)
 					if (GetTime() >= start_time + max_time)
 					{
 						stop_search = true;
-						hash_move.from = root.from;
-						hash_move.to = root.to;
-						return;
+						return root_move;
 					}
 				}
 				else if (GetTime() >= start_time + max_time / 4)
 				{
 					stop_search = true;
-					hash_move.from = root.from;
-					hash_move.to = root.to;
-					return;
+					return root_move;
 				}
-
 		}
+		//
 		currentkey = GetKey();
 		currentlock = GetLock();
 		currentpawnkey = GetPawnKey();
@@ -279,6 +361,7 @@ void Think(int fixed_time)
 			break;
 		}
 	}
+	return root_move;
 }
 
 int Search(int alpha, int beta, int depth, int pvs, int null)
@@ -366,7 +449,7 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 	int score;
 	int check = Check(xside, pieces[side][K][0]);
 	int ev1 = INVALID;
-
+	//*
 	if (depth > 2
 		&& null
 		&& !pvs
@@ -407,7 +490,7 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 			}
 		}
 	}
-
+	//*/
 	int count = 0;
 	int initial_alpha = alpha;
 	int bestscore = -20000;//
@@ -657,6 +740,8 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 
 	firstmove = bestmove;
 
+	int val_to, val_from;
+
 	if (lookup > -1)
 	{
 		if (bestmove.flags & (CAPTURE | PROMOTE | EP))
@@ -674,15 +759,17 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 			to = move_list[i].to;
 			from = move_list[i].from;
 			lowest = GetLowestAttacker(xside, to);
+			val_to = p_value[b[to]];
+			val_from = p_value[b[from]];
 			if (lowest > -1)
 			{
-				if (p_value[b[from]] < p_value[b[to]])
+				if (val_from < val_to)
 				{
-					move_list[i].score = p_value[b[to]] - p_value[b[from]];
+					move_list[i].score = val_to - val_from;
 				}
-				else if (p_value[b[from]] > p_value[b[to]] + p_value[lowest] && lowest != K)
+				else if (val_from > val_to + p_value[lowest] && lowest != K)
 				{
-					move_list[i].score = (p_value[b[to]] + p_value[lowest]) - p_value[b[from]];
+					move_list[i].score = (val_to + p_value[lowest]) - val_from;
 				}
 				else
 				{
@@ -691,7 +778,7 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 			}
 			else
 			{
-				move_list[i].score = p_value[b[to]];
+				move_list[i].score = val_to;
 			}
 		}
 	}
@@ -820,9 +907,62 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 
 	int diff = alpha - ev1;//??
 	int attacker = -1, attacked = -1, attack_type = 0;
+	/*
+	if (depth > 2)
+	{
+		for (int piece = Q; piece > P; piece--)
+			for (int i = 0; i < total[side][piece]; i++)
+			{
+				attacker = GetNextAttacker(xside, pieces[side][piece][i]);
+				if (attacker > -1)
+				{
+					attacked = pieces[side][piece][i];
+					if (p_value[b[attacker]] < p_value[piece])
+					{
+						attack_type = WEAKER_ATTACK;
+						piece = 0;
+						break;
+					}
+					if (Attack(side, attacked) == 0)
+					{
+						attack_type = UNDEFENDED;
+						piece = 0; 
+						break;
+					}
+					if (SEE(xside, attacker, attacked) > 0)
+					{
+						attack_type = SEE_ATTACK;
+						piece = 0;
+						break;
+					}
+				}
+			}
+	}
+	//*/
+	/*
+	if(pvflag==1 && depth > 500)
+		//printf("+");
+	for (int i = startmoves; i < first_move[ply + 1]; i++)
+	{
+		from = move_list[i].from;
+		to = move_list[i].to;
+		flags = move_list[i].flags;
+		if(flags & CHECK)
+			continue;
+		if (!MakeQuietMove(from, to, flags))
+		{
+			continue;
+		}
+		move_list[i].score = -Search(-beta, -alpha, 0, 0, 0);
+		UnMakeMove();
+	}
+	*/
+	int checkflag=0;
+	int extendflag=0;
 
 	for (int i = startmoves; i < first_move[ply + 1]; i++)
 	{
+		//if(checkflag==0 && diff >100)
 		top = Sort(i, top, first_move[ply + 1]);
 
 		from = move_list[i].from;
@@ -844,7 +984,7 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 					continue;
 				}
 			}
-			if (!(flags & (CHECK | KILLER)) &&
+			if (!(flags & CHECK) &&
 				move_list[i].score > -1 && depth > 2)// && diff > 0)
 			{
 				bit_all &= not_mask[from];
@@ -860,6 +1000,57 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 					}
 				}
 			}
+			/*/
+			extendflag = 0;
+			if (!(flags & CHECK))
+			{
+				if (depth == 1)
+				{
+					if(b[from]==0 && bit_pawncaptures[side][to] 
+					& (bit_pieces[xside][N] | bit_pieces[xside][B] | bit_pieces[xside][R] | bit_pieces[xside][Q]))
+					{
+						//Alg(from,to);
+						//z();
+						//printf("+");
+						extendflag = 1;
+						depth++;
+					}
+					else if(b[from]==1 && bit_knightmoves[to] 
+					& (bit_pieces[xside][B] | bit_pieces[xside][R] | bit_pieces[xside][Q]))
+					{
+						//Alg(from,to);
+						//z();
+						//printf("-");
+						depth++;
+						extendflag = 1;
+					}
+					else if(b[from]==2 && bit_bishopmoves[to] 
+					& (bit_pieces[xside][R] | bit_pieces[xside][Q]))
+					{
+						if (!(bit_between[to][NextBit(bit_bishopmoves[to] & bit_pieces[xside][R] | bit_pieces[xside][Q])] & bit_all))
+						{
+						//Alg(from,to);printf("-");
+						//Alg(to, NextBit(bit_bishopmoves[to] & bit_pieces[xside][R] | bit_pieces[xside][Q]));
+						//z();
+						depth++;
+						extendflag = 1;
+						}
+					}
+					else if(b[from]==3 && bit_rookmoves[to] 
+					& (bit_pieces[xside][Q]))
+					{
+						if (!(bit_between[to][NextBit(bit_rookmoves[to] & bit_pieces[xside][Q])] & bit_all))
+						{
+						//Alg(from,to);
+						//z();
+						//printf("-");
+						depth++;
+						extendflag = 1;
+						}
+					}
+				}
+			}
+			//*/
 
 			if (!(flags & CHECK))
 			{
@@ -899,7 +1090,7 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 			continue;
 		}
 
-		if (depth - r == 2 &&
+		if (depth - r == 2 && !extendflag && 
 			count > 0 && !(flags & CHECK))
 		{
 			if (ev1 == INVALID)
@@ -914,8 +1105,36 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 				continue;
 			}
 		}
+		/*/
+		if(!(flags & CHECK) && attacker > -1 && attack_type > -1 && move_list[i].score > -1)
+		{
+			if(attacked == from)
+			{
+				//printf(" move ");
+				//Alg(from,to);
+				//z();
+			}
+			else if(attacked != from && !Attack(side, attacked))
+			{
+				printf(" blocked ");
+				Alg(from,to);
+				z();
+			}
+			else if(attack_type == UNDEFENDED && Attack(xside, attacked))
+			{
+				/
+				printf(" defend ");
+				Alg(attacker, attacked);
+				printf(" ");
+				Alg(from,to);
+				z();
+				/
+			}
+		}
+		//*/
 
 		count++;
+
 		d = depth - 1;
 
 		if (alpha == initial_alpha)
@@ -947,11 +1166,6 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 		}
 
 		UnMakeQuietMove();
-
-		if (ply == 0)
-		{
-			rootscore[i].score = score;
-		}
 
 		if (score > bestscore)
 		{
@@ -1073,16 +1287,16 @@ void DisplayPV()
 			break;
 		move.from = hash_move.from;
 		move.to = hash_move.to;
-		move.flags = 0;
+		move.flags = hash_move.flags;
 
 		Alg(move.from, move.to);
 		if (x == 0)
 		{
-			hash_move.from = root.from = move.from;
-			hash_move.to = root.to = move.to;
-			hash_move.flags = root.flags = 0;
+			hash_move.from = move.from;
+			hash_move.to = move.to;
+			hash_move.flags = move.flags;
 		}
-		MakeMove(move.from, move.to, 0);
+		MakeMove(move.from, move.to, move.flags);
 	}
 	while (ply)
 		UnMakeMove();

@@ -312,12 +312,6 @@ int Debug(const int p)
 	}
 	//return 0;
 
-	if (fifty > 200)
-	{
-		printf(" fifty ");
-		z();
-	}
-
 	/*
 	if(color[pieces[0][K][0]]==1 || color[pieces[1][5][0]]==0)
 	{
