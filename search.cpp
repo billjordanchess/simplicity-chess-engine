@@ -205,92 +205,6 @@ move_data Think(int fixed_time)
 
 	all = 0; cut = 0;
 
-/*
-	move_data best_move;
-int prev_score = 0;
-
-GenCheck();//
-int from, to, flags;
-int best_score;
-
-	move_data engine_move = { 0, 0 };  // default "no move"
-for (int i = 1; i <= max_depth; i++)
-{
-    best_score = -INF;
-
-	currentkey = GetKey();
-	currentlock = GetLock();
-	currentpawnkey = GetPawnKey();
-	currentpawnlock = GetPawnLock();
-	memset(extend, 0, sizeof(extend));
-	currentmax = i;
-	deep = 0;
-	prev_score = Search(-INF, INF, i, PV, 0);
-
- for (int x = first_move[0]; x < first_move[1]; x++)
-	{
-		from = move_list[x].from;
-		to = move_list[x].to;
-		flags = move_list[x].flags;
-		if (!MakeMove(from, to, flags))
-		{
-			continue;
-		}
-
-        alpha = prev_score - 1;
-        beta = prev_score + 1;
-
-			while (true)
-			{
-				alpha = score - 1,
-				beta = score + 1;
-				score = -Search(-beta, -alpha, i - 1, PV, 0);
-				if (score > alpha && score < beta)
-					break;
-				if (score <= alpha)
-					alpha = score - 50;
-				if (beta >= score)
-					beta = score + 50;
-				score = -Search(-beta, -alpha, i - 1, PV, 0);
-				if (score > alpha && score < beta)
-					break;
-				score = -Search(-INF, INF, i - 1, PV, 0);
-				break;
-			}
-
-        UnMakeMove();
-
-        if (score > best_score) 
-		{
-            best_score = score;
-            root_move = move_list[x];
-        }
-    }
-
-    prev_score = best_score;  // Update for next depth
-    root_score = best_score;
-
-	printf("%d %d %d %d", i * 100 + deep, root_score, (GetTime() - start_time) / 10, nodes);
-
-	if (LookUp2(side) > -1)
-	{
-		DisplayPV();
-		printf("\n");
-		fflush(stdout);
-	}
-
-	if (score > 9000 || score < -9000)
-	{
-		break;
-	}
-
-    if (best_score > 9000 || best_score < -9000)
-        break;
-}
-
-return root_move;
-}
-*/
 	for (int i = 1; i <= max_depth; i++)
 	{
 		if (i > 1)
@@ -311,7 +225,7 @@ return root_move;
 					return root_move;
 				}
 		}
-		//
+		
 		currentkey = GetKey();
 		currentlock = GetLock();
 		currentpawnkey = GetPawnKey();
@@ -900,69 +814,16 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 		}
 	}
 	//
-	ev1 = Eval(alpha, beta);//??
-	//if(alpha > ev1 +100)
-	//	z();
-	//
+	ev1 = Eval(alpha, beta);
 
 	int diff = alpha - ev1;//??
 	int attacker = -1, attacked = -1, attack_type = 0;
-	/*
-	if (depth > 2)
-	{
-		for (int piece = Q; piece > P; piece--)
-			for (int i = 0; i < total[side][piece]; i++)
-			{
-				attacker = GetNextAttacker(xside, pieces[side][piece][i]);
-				if (attacker > -1)
-				{
-					attacked = pieces[side][piece][i];
-					if (p_value[b[attacker]] < p_value[piece])
-					{
-						attack_type = WEAKER_ATTACK;
-						piece = 0;
-						break;
-					}
-					if (Attack(side, attacked) == 0)
-					{
-						attack_type = UNDEFENDED;
-						piece = 0; 
-						break;
-					}
-					if (SEE(xside, attacker, attacked) > 0)
-					{
-						attack_type = SEE_ATTACK;
-						piece = 0;
-						break;
-					}
-				}
-			}
-	}
-	//*/
-	/*
-	if(pvflag==1 && depth > 500)
-		//printf("+");
-	for (int i = startmoves; i < first_move[ply + 1]; i++)
-	{
-		from = move_list[i].from;
-		to = move_list[i].to;
-		flags = move_list[i].flags;
-		if(flags & CHECK)
-			continue;
-		if (!MakeQuietMove(from, to, flags))
-		{
-			continue;
-		}
-		move_list[i].score = -Search(-beta, -alpha, 0, 0, 0);
-		UnMakeMove();
-	}
-	*/
+	
 	int checkflag=0;
 	int extendflag=0;
 
 	for (int i = startmoves; i < first_move[ply + 1]; i++)
 	{
-		//if(checkflag==0 && diff >100)
 		top = Sort(i, top, first_move[ply + 1]);
 
 		from = move_list[i].from;
@@ -1000,58 +861,6 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 					}
 				}
 			}
-			/*/
-			extendflag = 0;
-			if (!(flags & CHECK))
-			{
-				if (depth == 1)
-				{
-					if(b[from]==0 && bit_pawncaptures[side][to] 
-					& (bit_pieces[xside][N] | bit_pieces[xside][B] | bit_pieces[xside][R] | bit_pieces[xside][Q]))
-					{
-						//Alg(from,to);
-						//z();
-						//printf("+");
-						extendflag = 1;
-						depth++;
-					}
-					else if(b[from]==1 && bit_knightmoves[to] 
-					& (bit_pieces[xside][B] | bit_pieces[xside][R] | bit_pieces[xside][Q]))
-					{
-						//Alg(from,to);
-						//z();
-						//printf("-");
-						depth++;
-						extendflag = 1;
-					}
-					else if(b[from]==2 && bit_bishopmoves[to] 
-					& (bit_pieces[xside][R] | bit_pieces[xside][Q]))
-					{
-						if (!(bit_between[to][NextBit(bit_bishopmoves[to] & bit_pieces[xside][R] | bit_pieces[xside][Q])] & bit_all))
-						{
-						//Alg(from,to);printf("-");
-						//Alg(to, NextBit(bit_bishopmoves[to] & bit_pieces[xside][R] | bit_pieces[xside][Q]));
-						//z();
-						depth++;
-						extendflag = 1;
-						}
-					}
-					else if(b[from]==3 && bit_rookmoves[to] 
-					& (bit_pieces[xside][Q]))
-					{
-						if (!(bit_between[to][NextBit(bit_rookmoves[to] & bit_pieces[xside][Q])] & bit_all))
-						{
-						//Alg(from,to);
-						//z();
-						//printf("-");
-						depth++;
-						extendflag = 1;
-						}
-					}
-				}
-			}
-			//*/
-
 			if (!(flags & CHECK))
 			{
 				if (depth == 1)
@@ -1076,11 +885,6 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 			if (depth > 2)
 			{
 				r = Reduce(i);
-				if (r > 0 && depth > 2 && ply > 2 && reduce[ply - 1] == 1 && reduce[ply - 2] == 1)// && reduce[ply-3]==1)
-				{
-					//r++;
-					//printf("+");
-				}
 				reduce[ply] = r;
 			}
 		}
@@ -1105,33 +909,6 @@ int Search(int alpha, int beta, int depth, int pvs, int null)
 				continue;
 			}
 		}
-		/*/
-		if(!(flags & CHECK) && attacker > -1 && attack_type > -1 && move_list[i].score > -1)
-		{
-			if(attacked == from)
-			{
-				//printf(" move ");
-				//Alg(from,to);
-				//z();
-			}
-			else if(attacked != from && !Attack(side, attacked))
-			{
-				printf(" blocked ");
-				Alg(from,to);
-				z();
-			}
-			else if(attack_type == UNDEFENDED && Attack(xside, attacked))
-			{
-				/
-				printf(" defend ");
-				Alg(attacker, attacked);
-				printf(" ");
-				Alg(from,to);
-				z();
-				/
-			}
-		}
-		//*/
 
 		count++;
 
@@ -1477,25 +1254,6 @@ int GetThreat(int first, int target)
 			SEE(xside, attacker, target) > 0)
 		{
 			return attacker;
-			/*
-			for (int x = first; x < first_move[ply + 1]; x++)
-			{
-				if (move_list[x].from == target)
-				{
-					if(GetNextAttacker(xside, move_list[x].to) > -1)
-						break;
-					count++;
-					move_list[x].score += ESCAPE_SCORE + 9;
-				}
-				else if (count > 0)
-					break;
-			}
-			*/
-		}
-		if (count > 0)
-		{
-			//	printf("\n threat");
-			//ShowAll(ply);
 		}
 	}
 	return -1;
